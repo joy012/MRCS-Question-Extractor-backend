@@ -1,0 +1,17 @@
+{
+  "theme": "light",
+  "notifications": true,
+  "autoRefresh": true,
+  "refreshInterval": 30,
+  "pageSize": 20,
+  "enableSound": false,
+  "compactMode": false,
+  "showConfidence": true,
+  "apiTimeout": 30,
+  "maxRetries": 3,
+  "batchSize": 10,
+  "ollamaModel": "llama3.1",
+  "extractionQuality": "balanced",
+  "autoBackup": true,
+  "backupInterval": 24
+}

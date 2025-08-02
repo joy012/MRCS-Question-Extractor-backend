@@ -1,0 +1,21 @@
+export enum QuestionStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+export const QUESTION_ANSWER_OPTIONS = ['A', 'B', 'C', 'D', 'E'] as const;
+
+export type QuestionAnswerOption = (typeof QUESTION_ANSWER_OPTIONS)[number];
+
+export const QUESTION_VALIDATION = {
+  MIN_QUESTION_LENGTH: 10,
+  MAX_QUESTION_LENGTH: 2000,
+  MAX_OPTION_LENGTH: 1000,
+  MAX_DESCRIPTION_LENGTH: 5000,
+  MAX_EXPLANATION_LENGTH: 5000,
+  MIN_YEAR: 2000,
+  MAX_YEAR: 2030,
+  MIN_CONFIDENCE: 0,
+  MAX_CONFIDENCE: 100,
+} as const;

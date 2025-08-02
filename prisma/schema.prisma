@@ -1,0 +1,99 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum QuestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CategoryType {
+  BASIC
+  CLINICAL
+}
+
+enum IntakeType {
+  JANUARY
+  APRIL_MAY
+  SEPTEMBER
+}
+
+model Category {
+  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  name          String       @unique
+  displayName   String
+  type          CategoryType
+  questionCount Int          @default(0)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@map("categories")
+}
+
+model Intake {
+  id            String     @id @default(auto()) @map("_id") @db.ObjectId
+  name          String     @unique
+  type          IntakeType
+  displayName   String
+  questionCount Int        @default(0)
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  questions Question[]
+
+  @@map("intakes")
+}
+
+model Question {
+  id            String          @id @default(auto()) @map("_id") @db.ObjectId
+  question      String
+  options       QuestionOptions
+  correctAnswer String
+  description   String?
+  year          Int
+  explanation   String?
+  status        QuestionStatus  @default(PENDING)
+  aiMetadata    AiMetadata?
+  isDeleted     Boolean         @default(false)
+  deletedAt     DateTime?
+  deletedBy     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  // Relations
+  intakeId    String   @db.ObjectId
+  intake      Intake   @relation(fields: [intakeId], references: [id])
+  categoryIds String[] @db.ObjectId
+
+  @@map("questions")
+}
+
+type QuestionOptions {
+  A String
+  B String
+  C String
+  D String
+  E String
+}
+
+type AiMetadata {
+  confidence     Float?    @default(0)
+  extractedBy    String?   @default("AI")
+  sourceFile     String?
+  extractedAt    DateTime? @default(now())
+  aiModel        String?
+  processingTime Int?
+  rawExtraction  Json?
+}

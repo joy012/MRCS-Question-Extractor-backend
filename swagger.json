@@ -1,0 +1,4121 @@
+{
+  "openapi": "3.1.0",
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Development server"
+    }
+  ],
+  "info": {
+    "title": "MRCS Question Extractor API",
+    "description": "AI-powered medical exam question extraction from PDF documents",
+    "version": "1.0.0",
+    "license": {
+      "name": "MIT"
+    }
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "getHello"
+        ],
+        "x-samchon-controller": "AppController"
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "Get all active categories",
+        "description": "Get all active categories with pagination and filtering",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseDto__type"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "findAll"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      },
+      "post": {
+        "summary": "Create a new category",
+        "description": "Create a new category",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "oneOf": [
+                        {
+                          "const": "BASIC"
+                        },
+                        {
+                          "const": "CLINICAL"
+                        }
+                      ]
+                    },
+                    "questionCount": {
+                      "type": "number"
+                    },
+                    "isActive": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "id",
+                    "displayName",
+                    "type",
+                    "questionCount",
+                    "isActive",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "create"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/categories/all": {
+      "get": {
+        "summary": "Get all active categories",
+        "description": "Get all active categories without pagination",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "oneOf": [
+                          {
+                            "const": "BASIC"
+                          },
+                          {
+                            "const": "CLINICAL"
+                          }
+                        ]
+                      },
+                      "questionCount": {
+                        "type": "number"
+                      },
+                      "isActive": {
+                        "type": "boolean"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "id",
+                      "displayName",
+                      "type",
+                      "questionCount",
+                      "isActive",
+                      "createdAt",
+                      "updatedAt"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "all",
+          "findAllActive"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "summary": "Get category by ID",
+        "description": "Get category by ID",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "oneOf": [
+                            {
+                              "const": "BASIC"
+                            },
+                            {
+                              "const": "CLINICAL"
+                            }
+                          ]
+                        },
+                        "questionCount": {
+                          "type": "number"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "id",
+                        "displayName",
+                        "type",
+                        "questionCount",
+                        "isActive",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "findById"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      },
+      "put": {
+        "summary": "Update a category",
+        "description": "Update a category",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "oneOf": [
+                            {
+                              "const": "BASIC"
+                            },
+                            {
+                              "const": "CLINICAL"
+                            }
+                          ]
+                        },
+                        "questionCount": {
+                          "type": "number"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "id",
+                        "displayName",
+                        "type",
+                        "questionCount",
+                        "isActive",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "update"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      },
+      "delete": {
+        "summary": "Delete a category",
+        "description": "Delete a category (only custom categories can be deleted)",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "$delete"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/categories/reset": {
+      "post": {
+        "summary": "Reset categories to default",
+        "description": "Reset categories to default (preseeded)",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "reset",
+          "resetToDefault"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/categories/basic": {
+      "get": {
+        "summary": "Get all basic science categories",
+        "description": "Get all basic science categories",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "oneOf": [
+                          {
+                            "const": "BASIC"
+                          },
+                          {
+                            "const": "CLINICAL"
+                          }
+                        ]
+                      },
+                      "questionCount": {
+                        "type": "number"
+                      },
+                      "isActive": {
+                        "type": "boolean"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "id",
+                      "displayName",
+                      "type",
+                      "questionCount",
+                      "isActive",
+                      "createdAt",
+                      "updatedAt"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "basic",
+          "findBasicCategories"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/categories/clinical": {
+      "get": {
+        "summary": "Get all clinical categories",
+        "description": "Get all clinical categories",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "oneOf": [
+                          {
+                            "const": "BASIC"
+                          },
+                          {
+                            "const": "CLINICAL"
+                          }
+                        ]
+                      },
+                      "questionCount": {
+                        "type": "number"
+                      },
+                      "isActive": {
+                        "type": "boolean"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "id",
+                      "displayName",
+                      "type",
+                      "questionCount",
+                      "isActive",
+                      "createdAt",
+                      "updatedAt"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "clinical",
+          "findClinicalCategories"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/categories/stats": {
+      "get": {
+        "summary": "Get category statistics",
+        "description": "Get category statistics",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "number"
+                    },
+                    "active": {
+                      "type": "number"
+                    },
+                    "byType": {
+                      "$ref": "#/components/schemas/RecordCategoryTypenumber"
+                    }
+                  },
+                  "required": [
+                    "total",
+                    "active",
+                    "byType"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "stats",
+          "getCategoryStats"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/categories/names": {
+      "get": {
+        "summary": "Get active category names",
+        "description": "Get active category names",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "names",
+          "getActiveCategoryNames"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/categories/seed": {
+      "post": {
+        "summary": "Manually trigger category seeding",
+        "description": "Manually trigger category seeding",
+        "tags": [
+          "categories"
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "categories",
+          "seed",
+          "seedCategories"
+        ],
+        "x-samchon-controller": "CategoriesController"
+      }
+    },
+    "/intakes": {
+      "get": {
+        "summary": "Get all intakes",
+        "description": "Get all intakes with pagination and filtering",
+        "tags": [
+          "intakes"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseDto__type.o1"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "intakes",
+          "findAll"
+        ],
+        "x-samchon-controller": "IntakesController"
+      },
+      "post": {
+        "summary": "Create a new intake",
+        "description": "Create a new intake",
+        "tags": [
+          "intakes"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIntakeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "oneOf": [
+                        {
+                          "const": "JANUARY"
+                        },
+                        {
+                          "const": "APRIL_MAY"
+                        },
+                        {
+                          "const": "SEPTEMBER"
+                        }
+                      ]
+                    },
+                    "questionCount": {
+                      "type": "number"
+                    },
+                    "isActive": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "id",
+                    "displayName",
+                    "type",
+                    "questionCount",
+                    "isActive",
+                    "createdAt",
+                    "updatedAt"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "intakes",
+          "create"
+        ],
+        "x-samchon-controller": "IntakesController"
+      }
+    },
+    "/intakes/all": {
+      "get": {
+        "summary": "Get all active intakes",
+        "description": "Get all active intakes without pagination",
+        "tags": [
+          "intakes"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      },
+                      "type": {
+                        "oneOf": [
+                          {
+                            "const": "JANUARY"
+                          },
+                          {
+                            "const": "APRIL_MAY"
+                          },
+                          {
+                            "const": "SEPTEMBER"
+                          }
+                        ]
+                      },
+                      "questionCount": {
+                        "type": "number"
+                      },
+                      "isActive": {
+                        "type": "boolean"
+                      },
+                      "createdAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "updatedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "id",
+                      "displayName",
+                      "type",
+                      "questionCount",
+                      "isActive",
+                      "createdAt",
+                      "updatedAt"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "intakes",
+          "all",
+          "findAllActive"
+        ],
+        "x-samchon-controller": "IntakesController"
+      }
+    },
+    "/intakes/{id}": {
+      "get": {
+        "summary": "Get intake by ID",
+        "description": "Get intake by ID",
+        "tags": [
+          "intakes"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "oneOf": [
+                            {
+                              "const": "JANUARY"
+                            },
+                            {
+                              "const": "APRIL_MAY"
+                            },
+                            {
+                              "const": "SEPTEMBER"
+                            }
+                          ]
+                        },
+                        "questionCount": {
+                          "type": "number"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "id",
+                        "displayName",
+                        "type",
+                        "questionCount",
+                        "isActive",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "intakes",
+          "findById"
+        ],
+        "x-samchon-controller": "IntakesController"
+      },
+      "put": {
+        "summary": "Update an intake",
+        "description": "Update an intake",
+        "tags": [
+          "intakes"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIntakeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "oneOf": [
+                            {
+                              "const": "JANUARY"
+                            },
+                            {
+                              "const": "APRIL_MAY"
+                            },
+                            {
+                              "const": "SEPTEMBER"
+                            }
+                          ]
+                        },
+                        "questionCount": {
+                          "type": "number"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "id",
+                        "displayName",
+                        "type",
+                        "questionCount",
+                        "isActive",
+                        "createdAt",
+                        "updatedAt"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "intakes",
+          "update"
+        ],
+        "x-samchon-controller": "IntakesController"
+      },
+      "delete": {
+        "summary": "Delete an intake",
+        "description": "Delete an intake (only custom intakes can be deleted)",
+        "tags": [
+          "intakes"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "",
+            "content": {
+              "application/json": {}
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "intakes",
+          "$delete"
+        ],
+        "x-samchon-controller": "IntakesController"
+      }
+    },
+    "/intakes/reset": {
+      "post": {
+        "summary": "Reset intakes to default",
+        "description": "Reset intakes to default (preseeded)",
+        "tags": [
+          "intakes"
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "intakes",
+          "reset",
+          "resetToDefault"
+        ],
+        "x-samchon-controller": "IntakesController"
+      }
+    },
+    "/questions": {
+      "post": {
+        "summary": "Create a new question",
+        "description": "Create a new question",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuestionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "description": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "question": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "isDeleted": {
+                      "type": "boolean"
+                    },
+                    "intakeId": {
+                      "type": "string"
+                    },
+                    "correctAnswer": {
+                      "type": "string"
+                    },
+                    "year": {
+                      "type": "number"
+                    },
+                    "explanation": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "oneOf": [
+                        {
+                          "const": "PENDING"
+                        },
+                        {
+                          "const": "APPROVED"
+                        },
+                        {
+                          "const": "REJECTED"
+                        }
+                      ]
+                    },
+                    "deletedAt": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      ]
+                    },
+                    "deletedBy": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "string"
+                        }
+                      ]
+                    },
+                    "categoryIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "options": {
+                      "type": "object",
+                      "properties": {
+                        "A": {
+                          "type": "string"
+                        },
+                        "B": {
+                          "type": "string"
+                        },
+                        "C": {
+                          "type": "string"
+                        },
+                        "D": {
+                          "type": "string"
+                        },
+                        "E": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "A",
+                        "B",
+                        "C",
+                        "D",
+                        "E"
+                      ]
+                    },
+                    "aiMetadata": {
+                      "oneOf": [
+                        {
+                          "type": "null"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "confidence": {
+                              "oneOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "extractedBy": {
+                              "oneOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "sourceFile": {
+                              "oneOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "extractedAt": {
+                              "oneOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              ]
+                            },
+                            "aiModel": {
+                              "oneOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
+                            "processingTime": {
+                              "oneOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "number"
+                                }
+                              ]
+                            },
+                            "rawExtraction": {
+                              "oneOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/JsonArray"
+                                },
+                                {
+                                  "$ref": "#/components/schemas/JsonObject"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "confidence",
+                            "extractedBy",
+                            "sourceFile",
+                            "extractedAt",
+                            "aiModel",
+                            "processingTime",
+                            "rawExtraction"
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "description",
+                    "question",
+                    "id",
+                    "createdAt",
+                    "updatedAt",
+                    "isDeleted",
+                    "intakeId",
+                    "correctAnswer",
+                    "year",
+                    "explanation",
+                    "status",
+                    "deletedAt",
+                    "deletedBy",
+                    "categoryIds",
+                    "options",
+                    "aiMetadata"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "create"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      },
+      "get": {
+        "summary": "Get all questions with filtering and pagination",
+        "description": "Get all questions with filtering and pagination",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "oneOf": [
+                {
+                  "const": "PENDING"
+                },
+                {
+                  "const": "APPROVED"
+                },
+                {
+                  "const": "REJECTED"
+                }
+              ]
+            },
+            "required": false
+          },
+          {
+            "name": "intake",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "categories",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "required": false
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "required": false
+          },
+          {
+            "name": "minConfidence",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "required": false
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": false
+          },
+          {
+            "name": "sortOrder",
+            "in": "query",
+            "schema": {
+              "oneOf": [
+                {
+                  "const": "asc"
+                },
+                {
+                  "const": "desc"
+                }
+              ]
+            },
+            "required": false
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "required": false
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "number"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponseDto__type.o2"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "findAll"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/questions/bulk": {
+      "post": {
+        "summary": "Create multiple questions",
+        "description": "Create multiple questions",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CreateQuestionDto"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "created": {
+                      "type": "number"
+                    },
+                    "skipped": {
+                      "type": "number"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "created",
+                    "skipped",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "bulk",
+          "bulkCreate"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/questions/statistics": {
+      "get": {
+        "summary": "Get question statistics",
+        "description": "Get question statistics",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionStats"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "statistics",
+          "getStatistics"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/questions/categories": {
+      "get": {
+        "summary": "Get all available categories",
+        "description": "Get all available categories",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "category": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "category",
+                      "count"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "categories",
+          "getCategories"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/questions/years": {
+      "get": {
+        "summary": "Get all available years",
+        "description": "Get all available years",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "year": {
+                        "type": "number"
+                      },
+                      "count": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "year",
+                      "count"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "years",
+          "getYears"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/questions/intakes": {
+      "get": {
+        "summary": "Get all available intakes",
+        "description": "Get all available intakes",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "intake": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "intake",
+                      "count"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "intakes",
+          "getIntakes"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/questions/{id}": {
+      "get": {
+        "summary": "Get a question by ID",
+        "description": "Get a question by ID",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "question": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "isDeleted": {
+                          "type": "boolean"
+                        },
+                        "intakeId": {
+                          "type": "string"
+                        },
+                        "correctAnswer": {
+                          "type": "string"
+                        },
+                        "year": {
+                          "type": "number"
+                        },
+                        "explanation": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "oneOf": [
+                            {
+                              "const": "PENDING"
+                            },
+                            {
+                              "const": "APPROVED"
+                            },
+                            {
+                              "const": "REJECTED"
+                            }
+                          ]
+                        },
+                        "deletedAt": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          ]
+                        },
+                        "deletedBy": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "categoryIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "options": {
+                          "type": "object",
+                          "properties": {
+                            "A": {
+                              "type": "string"
+                            },
+                            "B": {
+                              "type": "string"
+                            },
+                            "C": {
+                              "type": "string"
+                            },
+                            "D": {
+                              "type": "string"
+                            },
+                            "E": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "A",
+                            "B",
+                            "C",
+                            "D",
+                            "E"
+                          ]
+                        },
+                        "aiMetadata": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "confidence": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "number"
+                                    }
+                                  ]
+                                },
+                                "extractedBy": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "sourceFile": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "extractedAt": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    }
+                                  ]
+                                },
+                                "aiModel": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "processingTime": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "number"
+                                    }
+                                  ]
+                                },
+                                "rawExtraction": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/JsonArray"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/JsonObject"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "confidence",
+                                "extractedBy",
+                                "sourceFile",
+                                "extractedAt",
+                                "aiModel",
+                                "processingTime",
+                                "rawExtraction"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "description",
+                        "question",
+                        "id",
+                        "createdAt",
+                        "updatedAt",
+                        "isDeleted",
+                        "intakeId",
+                        "correctAnswer",
+                        "year",
+                        "explanation",
+                        "status",
+                        "deletedAt",
+                        "deletedBy",
+                        "categoryIds",
+                        "options",
+                        "aiMetadata"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "findOne"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      },
+      "patch": {
+        "summary": "Update a question",
+        "description": "Update a question",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateQuestionDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "question": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "isDeleted": {
+                          "type": "boolean"
+                        },
+                        "intakeId": {
+                          "type": "string"
+                        },
+                        "correctAnswer": {
+                          "type": "string"
+                        },
+                        "year": {
+                          "type": "number"
+                        },
+                        "explanation": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "oneOf": [
+                            {
+                              "const": "PENDING"
+                            },
+                            {
+                              "const": "APPROVED"
+                            },
+                            {
+                              "const": "REJECTED"
+                            }
+                          ]
+                        },
+                        "deletedAt": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          ]
+                        },
+                        "deletedBy": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "categoryIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "options": {
+                          "type": "object",
+                          "properties": {
+                            "A": {
+                              "type": "string"
+                            },
+                            "B": {
+                              "type": "string"
+                            },
+                            "C": {
+                              "type": "string"
+                            },
+                            "D": {
+                              "type": "string"
+                            },
+                            "E": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "A",
+                            "B",
+                            "C",
+                            "D",
+                            "E"
+                          ]
+                        },
+                        "aiMetadata": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "confidence": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "number"
+                                    }
+                                  ]
+                                },
+                                "extractedBy": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "sourceFile": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "extractedAt": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    }
+                                  ]
+                                },
+                                "aiModel": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "processingTime": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "number"
+                                    }
+                                  ]
+                                },
+                                "rawExtraction": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/JsonArray"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/JsonObject"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "confidence",
+                                "extractedBy",
+                                "sourceFile",
+                                "extractedAt",
+                                "aiModel",
+                                "processingTime",
+                                "rawExtraction"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "description",
+                        "question",
+                        "id",
+                        "createdAt",
+                        "updatedAt",
+                        "isDeleted",
+                        "intakeId",
+                        "correctAnswer",
+                        "year",
+                        "explanation",
+                        "status",
+                        "deletedAt",
+                        "deletedBy",
+                        "categoryIds",
+                        "options",
+                        "aiMetadata"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "update"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      },
+      "delete": {
+        "summary": "Delete a question",
+        "description": "Delete a question",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "remove"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/questions/{id}/status": {
+      "post": {
+        "summary": "Update question status",
+        "description": "Update question status",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "oneOf": [
+                      {
+                        "const": "PENDING"
+                      },
+                      {
+                        "const": "APPROVED"
+                      },
+                      {
+                        "const": "REJECTED"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "description": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "question": {
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "isDeleted": {
+                          "type": "boolean"
+                        },
+                        "intakeId": {
+                          "type": "string"
+                        },
+                        "correctAnswer": {
+                          "type": "string"
+                        },
+                        "year": {
+                          "type": "number"
+                        },
+                        "explanation": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "oneOf": [
+                            {
+                              "const": "PENDING"
+                            },
+                            {
+                              "const": "APPROVED"
+                            },
+                            {
+                              "const": "REJECTED"
+                            }
+                          ]
+                        },
+                        "deletedAt": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          ]
+                        },
+                        "deletedBy": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "categoryIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "options": {
+                          "type": "object",
+                          "properties": {
+                            "A": {
+                              "type": "string"
+                            },
+                            "B": {
+                              "type": "string"
+                            },
+                            "C": {
+                              "type": "string"
+                            },
+                            "D": {
+                              "type": "string"
+                            },
+                            "E": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "A",
+                            "B",
+                            "C",
+                            "D",
+                            "E"
+                          ]
+                        },
+                        "aiMetadata": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "confidence": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "number"
+                                    }
+                                  ]
+                                },
+                                "extractedBy": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "sourceFile": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "extractedAt": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    }
+                                  ]
+                                },
+                                "aiModel": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    }
+                                  ]
+                                },
+                                "processingTime": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "number"
+                                    }
+                                  ]
+                                },
+                                "rawExtraction": {
+                                  "oneOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/JsonArray"
+                                    },
+                                    {
+                                      "$ref": "#/components/schemas/JsonObject"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "confidence",
+                                "extractedBy",
+                                "sourceFile",
+                                "extractedAt",
+                                "aiModel",
+                                "processingTime",
+                                "rawExtraction"
+                              ]
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "description",
+                        "question",
+                        "id",
+                        "createdAt",
+                        "updatedAt",
+                        "isDeleted",
+                        "intakeId",
+                        "correctAnswer",
+                        "year",
+                        "explanation",
+                        "status",
+                        "deletedAt",
+                        "deletedBy",
+                        "categoryIds",
+                        "options",
+                        "aiMetadata"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "status",
+          "updateStatus"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/questions/bulk-status": {
+      "post": {
+        "summary": "Update status for multiple questions",
+        "description": "Update status for multiple questions",
+        "tags": [
+          "questions"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkUpdateStatusDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "number"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "updated",
+                    "errors"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "questions",
+          "bulk_status",
+          "bulkUpdateStatus"
+        ],
+        "x-samchon-controller": "QuestionsController"
+      }
+    },
+    "/extraction/pdfs": {
+      "get": {
+        "summary": "List all available PDFs",
+        "description": "List all available PDFs",
+        "tags": [
+          "extraction"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "extraction",
+          "pdfs",
+          "listPdfs"
+        ],
+        "x-samchon-controller": "ExtractionController"
+      }
+    },
+    "/extraction/start": {
+      "post": {
+        "summary": "Start extraction for a selected PDF",
+        "description": "Start extraction for a selected PDF",
+        "tags": [
+          "extraction"
+        ],
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "pdf": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "pdf"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "extractionId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "extractionId"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "extraction",
+          "start",
+          "startExtraction"
+        ],
+        "x-samchon-controller": "ExtractionController"
+      }
+    },
+    "/extraction/stop": {
+      "delete": {
+        "summary": "Stop extraction",
+        "description": "Stop extraction",
+        "tags": [
+          "extraction"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "extraction",
+          "stop",
+          "stopExtraction"
+        ],
+        "x-samchon-controller": "ExtractionController"
+      }
+    },
+    "/extraction/status": {
+      "get": {
+        "summary": "Get current extraction status",
+        "description": "Get current extraction status",
+        "tags": [
+          "extraction"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractionState"
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "extraction",
+          "status",
+          "getStatus"
+        ],
+        "x-samchon-controller": "ExtractionController"
+      }
+    },
+    "/extraction/logs": {
+      "get": {
+        "summary": "Get extraction logs",
+        "description": "Get extraction logs",
+        "tags": [
+          "extraction"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "logs": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "logs"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "extraction",
+          "logs",
+          "getLogs"
+        ],
+        "x-samchon-controller": "ExtractionController"
+      }
+    },
+    "/settings/delete-database": {
+      "post": {
+        "tags": [],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "settings",
+          "delete_database",
+          "deleteFullDatabase"
+        ],
+        "x-samchon-controller": "SettingsController"
+      }
+    },
+    "/settings/delete-questions": {
+      "post": {
+        "tags": [],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-samchon-accessor": [
+          "settings",
+          "delete_questions",
+          "deleteQuestions"
+        ],
+        "x-samchon-controller": "SettingsController"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PaginatedResponseDto__type": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "type": {
+                  "oneOf": [
+                    {
+                      "const": "BASIC"
+                    },
+                    {
+                      "const": "CLINICAL"
+                    }
+                  ]
+                },
+                "questionCount": {
+                  "type": "number"
+                },
+                "isActive": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "name",
+                "id",
+                "displayName",
+                "type",
+                "questionCount",
+                "isActive",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "totalPages": {
+                "type": "number"
+              },
+              "hasNextPage": {
+                "type": "boolean"
+              },
+              "hasPrevPage": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "totalPages",
+              "hasNextPage",
+              "hasPrevPage"
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "pagination",
+          "success"
+        ]
+      },
+      "CreateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "type": {
+            "oneOf": [
+              {
+                "const": "BASIC"
+              },
+              {
+                "const": "CLINICAL"
+              }
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "displayName",
+          "type"
+        ]
+      },
+      "UpdateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "type": {
+            "oneOf": [
+              {
+                "const": "BASIC"
+              },
+              {
+                "const": "CLINICAL"
+              }
+            ]
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": []
+      },
+      "RecordCategoryTypenumber": {
+        "type": "object",
+        "properties": {
+          "BASIC": {
+            "type": "number"
+          },
+          "CLINICAL": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "BASIC",
+          "CLINICAL"
+        ],
+        "description": "Construct a type with a set of properties K of type T"
+      },
+      "PaginatedResponseDto__type.o1": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "type": {
+                  "oneOf": [
+                    {
+                      "const": "JANUARY"
+                    },
+                    {
+                      "const": "APRIL_MAY"
+                    },
+                    {
+                      "const": "SEPTEMBER"
+                    }
+                  ]
+                },
+                "questionCount": {
+                  "type": "number"
+                },
+                "isActive": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              },
+              "required": [
+                "name",
+                "id",
+                "displayName",
+                "type",
+                "questionCount",
+                "isActive",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "totalPages": {
+                "type": "number"
+              },
+              "hasNextPage": {
+                "type": "boolean"
+              },
+              "hasPrevPage": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "totalPages",
+              "hasNextPage",
+              "hasPrevPage"
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "pagination",
+          "success"
+        ]
+      },
+      "CreateIntakeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "oneOf": [
+              {
+                "const": "JANUARY"
+              },
+              {
+                "const": "APRIL_MAY"
+              },
+              {
+                "const": "SEPTEMBER"
+              }
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "displayName"
+        ]
+      },
+      "UpdateIntakeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "oneOf": [
+              {
+                "const": "JANUARY"
+              },
+              {
+                "const": "APRIL_MAY"
+              },
+              {
+                "const": "SEPTEMBER"
+              }
+            ]
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": []
+      },
+      "JsonArray": {
+        "type": "array",
+        "items": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/components/schemas/JsonArray"
+            },
+            {
+              "$ref": "#/components/schemas/JsonObject"
+            }
+          ]
+        }
+      },
+      "JsonObject": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "description": "From https://github.com/sindresorhus/type-fest/\nMatches a JSON object.\nThis type can be useful to enforce some input to be JSON-compatible or as a super-type to be extended from.",
+        "additionalProperties": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "$ref": "#/components/schemas/JsonArray"
+            },
+            {
+              "$ref": "#/components/schemas/JsonObject"
+            }
+          ]
+        }
+      },
+      "CreateQuestionDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "$ref": "#/components/schemas/QuestionOptionsDto"
+          },
+          "correctAnswer": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "year": {
+            "type": "number"
+          },
+          "intake": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "status": {
+            "oneOf": [
+              {
+                "const": "PENDING"
+              },
+              {
+                "const": "APPROVED"
+              },
+              {
+                "const": "REJECTED"
+              }
+            ]
+          },
+          "aiMetadata": {
+            "$ref": "#/components/schemas/AiMetadataDto"
+          }
+        },
+        "required": [
+          "question",
+          "options",
+          "correctAnswer",
+          "year",
+          "intake",
+          "categories"
+        ]
+      },
+      "QuestionOptionsDto": {
+        "type": "object",
+        "properties": {
+          "A": {
+            "type": "string"
+          },
+          "B": {
+            "type": "string"
+          },
+          "C": {
+            "type": "string"
+          },
+          "D": {
+            "type": "string"
+          },
+          "E": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E"
+        ]
+      },
+      "AiMetadataDto": {
+        "type": "object",
+        "properties": {
+          "confidence": {
+            "type": "number"
+          },
+          "extractedBy": {
+            "type": "string"
+          },
+          "sourceFile": {
+            "type": "string"
+          },
+          "extractedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "aiModel": {
+            "type": "string"
+          },
+          "processingTime": {
+            "type": "number"
+          },
+          "rawExtraction": {}
+        },
+        "required": []
+      },
+      "PaginatedResponseDto__type.o2": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "question": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "isDeleted": {
+                  "type": "boolean"
+                },
+                "intakeId": {
+                  "type": "string"
+                },
+                "correctAnswer": {
+                  "type": "string"
+                },
+                "year": {
+                  "type": "number"
+                },
+                "explanation": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "status": {
+                  "oneOf": [
+                    {
+                      "const": "PENDING"
+                    },
+                    {
+                      "const": "APPROVED"
+                    },
+                    {
+                      "const": "REJECTED"
+                    }
+                  ]
+                },
+                "deletedAt": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  ]
+                },
+                "deletedBy": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                },
+                "categoryIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "A": {
+                      "type": "string"
+                    },
+                    "B": {
+                      "type": "string"
+                    },
+                    "C": {
+                      "type": "string"
+                    },
+                    "D": {
+                      "type": "string"
+                    },
+                    "E": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E"
+                  ]
+                },
+                "aiMetadata": {
+                  "oneOf": [
+                    {
+                      "type": "null"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "confidence": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        },
+                        "extractedBy": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "sourceFile": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "extractedAt": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          ]
+                        },
+                        "aiModel": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            }
+                          ]
+                        },
+                        "processingTime": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "number"
+                            }
+                          ]
+                        },
+                        "rawExtraction": {
+                          "oneOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "$ref": "#/components/schemas/JsonArray"
+                            },
+                            {
+                              "$ref": "#/components/schemas/JsonObject"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "confidence",
+                        "extractedBy",
+                        "sourceFile",
+                        "extractedAt",
+                        "aiModel",
+                        "processingTime",
+                        "rawExtraction"
+                      ]
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "description",
+                "question",
+                "id",
+                "createdAt",
+                "updatedAt",
+                "isDeleted",
+                "intakeId",
+                "correctAnswer",
+                "year",
+                "explanation",
+                "status",
+                "deletedAt",
+                "deletedBy",
+                "categoryIds",
+                "options",
+                "aiMetadata"
+              ]
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "number"
+              },
+              "limit": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "totalPages": {
+                "type": "number"
+              },
+              "hasNextPage": {
+                "type": "boolean"
+              },
+              "hasPrevPage": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "page",
+              "limit",
+              "total",
+              "totalPages",
+              "hasNextPage",
+              "hasPrevPage"
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "pagination",
+          "success"
+        ]
+      },
+      "QuestionFilterDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "oneOf": [
+              {
+                "const": "PENDING"
+              },
+              {
+                "const": "APPROVED"
+              },
+              {
+                "const": "REJECTED"
+              }
+            ]
+          },
+          "intake": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "year": {
+            "type": "number"
+          },
+          "minConfidence": {
+            "type": "number"
+          },
+          "search": {
+            "type": "string"
+          },
+          "sortBy": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "oneOf": [
+              {
+                "const": "asc"
+              },
+              {
+                "const": "desc"
+              }
+            ]
+          },
+          "page": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        },
+        "required": []
+      },
+      "QuestionStats": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "byCategory": {
+            "$ref": "#/components/schemas/Recordstringnumber"
+          },
+          "byYear": {
+            "$ref": "#/components/schemas/Recordnumbernumber"
+          },
+          "byIntake": {
+            "$ref": "#/components/schemas/Recordstringnumber"
+          },
+          "byStatus": {
+            "$ref": "#/components/schemas/RecordQuestionStatusnumber"
+          },
+          "averageConfidence": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "total",
+          "byCategory",
+          "byYear",
+          "byIntake",
+          "byStatus",
+          "averageConfidence"
+        ]
+      },
+      "Recordstringnumber": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "description": "Construct a type with a set of properties K of type T",
+        "additionalProperties": {
+          "type": "number"
+        }
+      },
+      "Recordnumbernumber": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "description": "Construct a type with a set of properties K of type T",
+        "additionalProperties": {
+          "type": "number"
+        }
+      },
+      "RecordQuestionStatusnumber": {
+        "type": "object",
+        "properties": {
+          "PENDING": {
+            "type": "number"
+          },
+          "APPROVED": {
+            "type": "number"
+          },
+          "REJECTED": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "PENDING",
+          "APPROVED",
+          "REJECTED"
+        ],
+        "description": "Construct a type with a set of properties K of type T"
+      },
+      "UpdateQuestionDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "$ref": "#/components/schemas/QuestionOptionsDto"
+          },
+          "correctAnswer": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "year": {
+            "type": "number"
+          },
+          "intake": {
+            "type": "string"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "status": {
+            "oneOf": [
+              {
+                "const": "PENDING"
+              },
+              {
+                "const": "APPROVED"
+              },
+              {
+                "const": "REJECTED"
+              }
+            ]
+          },
+          "aiMetadata": {
+            "$ref": "#/components/schemas/AiMetadataDto"
+          }
+        },
+        "required": []
+      },
+      "BulkUpdateStatusDto": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "oneOf": [
+              {
+                "const": "PENDING"
+              },
+              {
+                "const": "APPROVED"
+              },
+              {
+                "const": "REJECTED"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ids",
+          "status"
+        ]
+      },
+      "ExtractionState": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "oneOf": [
+              {
+                "const": "idle"
+              },
+              {
+                "const": "processing"
+              },
+              {
+                "const": "completed"
+              },
+              {
+                "const": "failed"
+              }
+            ]
+          },
+          "selectedPdf": {
+            "type": "string"
+          },
+          "progress": {
+            "type": "number"
+          },
+          "totalPages": {
+            "type": "number"
+          },
+          "processedPages": {
+            "type": "number"
+          },
+          "failedPages": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "logs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "startTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "endTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "error": {
+            "type": "string"
+          },
+          "extractedQuestions": {
+            "type": "number"
+          },
+          "questionsPerPage": {
+            "$ref": "#/components/schemas/Recordnumbernumber"
+          },
+          "verifiedQuestions": {
+            "type": "number"
+          },
+          "updatedQuestions": {
+            "type": "number"
+          },
+          "skippedQuestions": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "selectedPdf",
+          "progress",
+          "totalPages",
+          "processedPages",
+          "failedPages",
+          "logs",
+          "extractedQuestions",
+          "questionsPerPage",
+          "verifiedQuestions",
+          "updatedQuestions",
+          "skippedQuestions"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "categories"
+    },
+    {
+      "name": "intakes"
+    },
+    {
+      "name": "questions"
+    },
+    {
+      "name": "extraction"
+    }
+  ],
+  "x-samchon-emended-v4": true
+}

@@ -1,0 +1,7 @@
+ignoredBuiltDependencies:
+  - '@nestjs/core'
+  - '@scarf/scarf'
+  - '@swc/core'
+  - canvas
+  - sharp
+  - tesseract.js

@@ -48,15 +48,75 @@ interface TextContent {
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
   private readonly tempDir: string;
-  private readonly pdfPath: string;
+  private readonly dataDir: string;
+  private currentPdfPath: string | null = null;
 
   constructor(private configService: ConfigService) {
     this.tempDir = this.configService.get<string>('TEMP_DIR', './temp');
-    this.pdfPath = this.configService.get<string>(
-      'PDF_PATH',
-      './data/mrcs-question-bank.pdf',
-    );
+    this.dataDir = this.configService.get<string>('DATA_DIR', './data');
     this.ensureTempDirectory();
+  }
+
+  /**
+   * Set the current PDF to work with
+   * @param pdfFilename The PDF filename (e.g., 'mrcs-questions.pdf')
+   */
+  setCurrentPdf(pdfFilename: string): void {
+    this.currentPdfPath = path.join(this.dataDir, pdfFilename);
+    this.logger.log(`Set current PDF to: ${this.currentPdfPath}`);
+  }
+
+  /**
+   * Get the current PDF path
+   * @returns The current PDF path
+   */
+  getCurrentPdfPath(): string {
+    if (!this.currentPdfPath) {
+      throw new Error('No PDF has been set. Call setCurrentPdf() first.');
+    }
+    return this.currentPdfPath;
+  }
+
+  /**
+   * Validate if the current PDF exists and is accessible
+   */
+  async validateCurrentPdf(): Promise<{
+    valid: boolean;
+    totalPages?: number;
+    error?: string;
+  }> {
+    try {
+      const pdfPath = this.getCurrentPdfPath();
+
+      if (!(await fs.pathExists(pdfPath))) {
+        return {
+          valid: false,
+          error: `PDF file not found at: ${pdfPath}`,
+        };
+      }
+
+      const stats = await fs.stat(pdfPath);
+      if (stats.size === 0) {
+        return { valid: false, error: 'PDF file is empty' };
+      }
+
+      const buffer = await fs.readFile(pdfPath);
+      const data = new Uint8Array(buffer);
+
+      // Use proper PDF.js configuration
+      const doc = await getDocument({
+        data,
+        ...PDFJS_CONFIG,
+        verbosity: 0,
+      }).promise;
+      const totalPages = doc.numPages;
+
+      return { valid: true, totalPages };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      return { valid: false, error: `PDF validation failed: ${errorMessage}` };
+    }
   }
 
   async extractPagesContent(
@@ -68,11 +128,13 @@ export class PdfService {
         `Starting PDF extraction from page ${startPage} to ${endPage || 'end'}`,
       );
 
-      if (!(await fs.pathExists(this.pdfPath))) {
-        throw new Error(`PDF file not found at: ${this.pdfPath}`);
+      const pdfPath = this.getCurrentPdfPath();
+
+      if (!(await fs.pathExists(pdfPath))) {
+        throw new Error(`PDF file not found at: ${pdfPath}`);
       }
 
-      const buffer = await fs.readFile(this.pdfPath);
+      const buffer = await fs.readFile(pdfPath);
       const data = new Uint8Array(buffer);
 
       // Use proper PDF.js configuration
@@ -120,7 +182,8 @@ export class PdfService {
 
   async extractSinglePage(pageNumber: number): Promise<PdfPageContent> {
     try {
-      const buffer = await fs.readFile(this.pdfPath);
+      const pdfPath = this.getCurrentPdfPath();
+      const buffer = await fs.readFile(pdfPath);
       const data = new Uint8Array(buffer);
 
       // Use proper PDF.js configuration
@@ -263,51 +326,15 @@ export class PdfService {
     }
   }
 
-  async validatePdfFile(): Promise<{
-    valid: boolean;
-    totalPages?: number;
-    error?: string;
-  }> {
-    try {
-      if (!(await fs.pathExists(this.pdfPath))) {
-        return {
-          valid: false,
-          error: `PDF file not found at: ${this.pdfPath}`,
-        };
-      }
-
-      const stats = await fs.stat(this.pdfPath);
-      if (stats.size === 0) {
-        return { valid: false, error: 'PDF file is empty' };
-      }
-
-      const buffer = await fs.readFile(this.pdfPath);
-      const data = new Uint8Array(buffer);
-
-      // Use proper PDF.js configuration
-      const doc = await getDocument({
-        data,
-        ...PDFJS_CONFIG,
-        verbosity: 0,
-      }).promise;
-      const totalPages = doc.numPages;
-
-      return { valid: true, totalPages };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      return { valid: false, error: `PDF validation failed: ${errorMessage}` };
-    }
-  }
-
   async getPdfInfo(): Promise<{
     totalPages: number;
     fileSize: number;
     fileName: string;
   }> {
     try {
-      const stats = await fs.stat(this.pdfPath);
-      const buffer = await fs.readFile(this.pdfPath);
+      const pdfPath = this.getCurrentPdfPath();
+      const stats = await fs.stat(pdfPath);
+      const buffer = await fs.readFile(pdfPath);
       const data = new Uint8Array(buffer);
 
       // Use proper PDF.js configuration
@@ -320,7 +347,7 @@ export class PdfService {
       return {
         totalPages: doc.numPages,
         fileSize: stats.size,
-        fileName: path.basename(this.pdfPath),
+        fileName: path.basename(pdfPath),
       };
     } catch (error) {
       this.logger.error('Failed to get PDF info:', error);

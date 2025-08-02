@@ -4,7 +4,10 @@ import {
   ExtractionStatusResponse,
   GetLogsResponse,
   ListPdfsResponse,
+  QueueStatusResponse,
+  StartExtractionDto,
   StartExtractionResponse,
+  StatisticsResponse,
   StopExtractionResponse,
 } from './dto';
 import { ExtractionService } from './extraction.service';
@@ -29,8 +32,10 @@ export class ExtractionController {
    * @tag extraction
    */
   @TypedRoute.Post('start')
-  startExtraction(@TypedBody() body: { pdf: string }): StartExtractionResponse {
-    return this.extractionService.startExtraction(body.pdf);
+  async startExtraction(
+    @TypedBody() body: StartExtractionDto,
+  ): Promise<StartExtractionResponse> {
+    return await this.extractionService.startExtraction(body);
   }
 
   /**
@@ -39,8 +44,8 @@ export class ExtractionController {
    * @tag extraction
    */
   @TypedRoute.Delete('stop')
-  stopExtraction(): StopExtractionResponse {
-    return this.extractionService.stopExtraction();
+  async stopExtraction(): Promise<StopExtractionResponse> {
+    return await this.extractionService.stopExtraction();
   }
 
   /**
@@ -49,8 +54,8 @@ export class ExtractionController {
    * @tag extraction
    */
   @TypedRoute.Get('status')
-  getStatus(): ExtractionStatusResponse {
-    return this.extractionService.getStatus();
+  async getStatus(): Promise<ExtractionStatusResponse> {
+    return await this.extractionService.getStatus();
   }
 
   /**
@@ -59,7 +64,38 @@ export class ExtractionController {
    * @tag extraction
    */
   @TypedRoute.Get('logs')
-  getLogs(): GetLogsResponse {
-    return this.extractionService.getLogs();
+  async getLogs(): Promise<GetLogsResponse> {
+    return await this.extractionService.getLogs();
+  }
+
+  /**
+   * Get extraction statistics
+   * @summary Get extraction statistics
+   * @tag extraction
+   */
+  @TypedRoute.Get('statistics')
+  async getStatistics(): Promise<StatisticsResponse> {
+    return await this.extractionService.getStatistics();
+  }
+
+  /**
+   * Get queue status
+   * @summary Get queue status
+   * @tag extraction
+   */
+  @TypedRoute.Get('queue-status')
+  async getQueueStatus(): Promise<QueueStatusResponse> {
+    return await this.extractionService.getQueueStatus();
+  }
+
+  /**
+   * Clear extraction state
+   * @summary Clear extraction state
+   * @tag extraction
+   */
+  @TypedRoute.Delete('clear')
+  async clearExtractionState(): Promise<{ message: string }> {
+    await this.extractionService.clearExtractionState();
+    return { message: 'Extraction state cleared successfully' };
   }
 }

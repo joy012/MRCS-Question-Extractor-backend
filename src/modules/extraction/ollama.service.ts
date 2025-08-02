@@ -54,7 +54,7 @@ export class OllamaService {
   private readonly logger = new Logger(OllamaService.name);
   private readonly axiosInstance: AxiosInstance;
   private readonly baseUrl: string;
-  private readonly model: string;
+  private model: string;
   private readonly timeout: number;
 
   // Use preseeded categories and intakes
@@ -77,6 +77,15 @@ export class OllamaService {
       baseURL: this.baseUrl,
       timeout: this.timeout,
     });
+  }
+
+  /**
+   * Set the model to use for extraction
+   * @param model The model name
+   */
+  setModel(model: string): void {
+    this.model = model;
+    this.logger.log(`Ollama model set to: ${model}`);
   }
 
   async extractQuestionsFromText(
@@ -172,15 +181,20 @@ CATEGORY GUIDELINES:
 INTAKES (use only these preseeded intakes):
 ${this.intakes.map((intake) => `   - ${intake}`).join('\n')}
 
-YEAR DETECTION:
-- Extract year from PDF content or PDF name: ${yearFromPdf ? `Detected year: ${yearFromPdf}` : 'Extract from content'}
-- Look for year patterns in the text (e.g., "2023", "2024", etc.)
-- If no year found, use reasonable estimate based on content
+YEAR DETECTION - PRIORITY ORDER:
+1. FIRST: Look for year patterns in the PDF text content (e.g., "2023", "2024", "September 2022", "January 2016", etc.)
+2. SECOND: If no year found in content, use PDF filename year: ${yearFromPdf ? `${yearFromPdf}` : 'None detected'}
+3. THIRD: If neither available, use reasonable estimate based on content context
+- Common year patterns to look for: "2024", "2023", "2022", "January 2025", "April 2024", etc.
+- Year should be between 2000-2030
 
-INTAKE DETECTION:
-- Extract intake from PDF content or PDF name: ${intakeFromPdf ? `Detected intake: ${intakeFromPdf}` : 'Extract from content'}
-- Look for intake patterns in the text
-- If no intake found, use reasonable estimate based on content
+INTAKE DETECTION - PRIORITY ORDER:
+1. FIRST: Look for intake patterns in the PDF text content (e.g., "September 2022", "January 2016", "April 2024", "May exam", etc.)
+2. SECOND: If no intake found in content, use PDF filename intake: ${intakeFromPdf ? `${intakeFromPdf}` : 'None detected'}
+3. THIRD: If neither available, use reasonable estimate based on content context
+- Common intake patterns to look for: "January", "Jan", "April", "May", "September", "Sept", etc.
+- Map patterns to valid intakes: January/Jan → "january", April/May → "april-may", September/Sept → "september"
+- Valid intakes are: january, april-may, september
 
 OUTPUT FORMAT: Return a JSON array with this exact structure:
 [
@@ -237,21 +251,56 @@ Provide only the JSON response.`;
   }
 
   private extractYearFromPdfName(pdfName: string): number | null {
-    const yearMatch = pdfName.match(/\b(20[12]\d)\b/);
-    return yearMatch ? parseInt(yearMatch[1]) : null;
+    // Match 4-digit years from 2000-2030
+    const yearPatterns = [
+      /\b(20[0-3]\d)\b/, // 2000-2039
+      /\b(19[8-9]\d)\b/, // 1980-1999 (for older exams if any)
+    ];
+
+    for (const pattern of yearPatterns) {
+      const yearMatch = pdfName.match(pattern);
+      if (yearMatch) {
+        const year = parseInt(yearMatch[1]);
+        // Validate year is in reasonable range for MRCS exams
+        if (year >= 1990 && year <= 2030) {
+          return year;
+        }
+      }
+    }
+
+    return null;
   }
 
   private extractIntakeFromPdfName(pdfName: string): string | null {
     const lowerPdfName = pdfName.toLowerCase();
 
+    // Check for January intake patterns
     if (lowerPdfName.includes('january') || lowerPdfName.includes('jan')) {
       return 'january';
     }
+
+    // Check for April/May intake patterns
     if (lowerPdfName.includes('april') || lowerPdfName.includes('may')) {
       return 'april-may';
     }
-    if (lowerPdfName.includes('september') || lowerPdfName.includes('sep')) {
+
+    // Check for September intake patterns
+    if (lowerPdfName.includes('september') || lowerPdfName.includes('sept')) {
       return 'september';
+    }
+
+    // Additional pattern matching for edge cases
+    // Match patterns like "recall april", "exam january", etc.
+    const intakePatterns = [
+      { pattern: /\b(january|jan)\b/i, intake: 'january' },
+      { pattern: /\b(april|may)\b/i, intake: 'april-may' },
+      { pattern: /\b(september|sept)\b/i, intake: 'september' },
+    ];
+
+    for (const { pattern, intake } of intakePatterns) {
+      if (pattern.test(pdfName)) {
+        return intake;
+      }
     }
 
     return null;

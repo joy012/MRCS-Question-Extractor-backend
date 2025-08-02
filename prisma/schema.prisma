@@ -97,3 +97,14 @@ type AiMetadata {
   processingTime Int?
   rawExtraction  Json?
 }
+
+model Settings {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  key           String   @unique
+  value         Json
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("settings")
+}

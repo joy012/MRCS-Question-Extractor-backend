@@ -10,7 +10,6 @@ import { ExtractionModule } from './modules/extraction/extraction.module';
 import { IntakesModule } from './modules/intakes/intakes.module';
 import { QuestionsModule } from './modules/questions/questions.module';
 import { SettingsModule } from './modules/settings/settings.module';
-import { WebsocketModule } from './modules/websocket/websocket.module';
 
 @Module({
   imports: [
@@ -37,7 +36,6 @@ import { WebsocketModule } from './modules/websocket/websocket.module';
     QuestionsModule,
     ExtractionModule,
     SettingsModule,
-    WebsocketModule,
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],

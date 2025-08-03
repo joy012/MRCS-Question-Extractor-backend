@@ -1,6 +1,7 @@
 import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
+import { QuestionStatus } from '../../common/CONSTANTS/questions.constants';
 import { CategoriesService } from '../categories/categories.service';
 import { IntakesService } from '../intakes/intakes.service';
 import { QuestionsService } from '../questions/questions.service';
@@ -440,6 +441,12 @@ export class ExtractionProcessor {
         extractedQuestion.intake,
       );
 
+      // Determine status based on confidence for updates
+      const updatedStatus =
+        extractedQuestion.confidence >= 0.8
+          ? QuestionStatus.APPROVED
+          : QuestionStatus.PENDING;
+
       await this.questionsService.update(questionId, {
         question: extractedQuestion.question,
         options: extractedQuestion.options,
@@ -448,11 +455,19 @@ export class ExtractionProcessor {
         year: extractedQuestion.examYear,
         intake: intakeId,
         explanation: extractedQuestion.explanation,
+        status: updatedStatus,
         aiMetadata: {
           confidence: extractedQuestion.confidence,
           extractedAt: new Date(),
         },
       });
+
+      // Log auto-approval if applicable
+      if (updatedStatus === QuestionStatus.APPROVED) {
+        this.logger.log(
+          `Auto-approved updated question with confidence ${extractedQuestion.confidence} (>= 0.8)`,
+        );
+      }
     } catch (error) {
       this.logger.error('Error updating existing question:', error);
       throw error;
@@ -471,6 +486,12 @@ export class ExtractionProcessor {
         extractedQuestion.intake,
       );
 
+      // Determine initial status based on confidence
+      const initialStatus =
+        extractedQuestion.confidence >= 0.8
+          ? QuestionStatus.APPROVED
+          : QuestionStatus.PENDING;
+
       await this.questionsService.create({
         question: extractedQuestion.question,
         options: extractedQuestion.options,
@@ -479,11 +500,19 @@ export class ExtractionProcessor {
         year: extractedQuestion.examYear,
         intake: intakeId,
         explanation: extractedQuestion.explanation,
+        status: initialStatus,
         aiMetadata: {
           confidence: extractedQuestion.confidence,
           extractedAt: new Date(),
         },
       });
+
+      // Log auto-approval if applicable
+      if (initialStatus === QuestionStatus.APPROVED) {
+        this.logger.log(
+          `Auto-approved question with confidence ${extractedQuestion.confidence} (>= 0.8)`,
+        );
+      }
     } catch (error) {
       this.logger.error('Error creating new question:', error);
       throw error;

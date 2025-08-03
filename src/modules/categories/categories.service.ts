@@ -230,7 +230,9 @@ export class CategoriesService implements OnModuleInit {
       });
 
       if (!category) {
-        this.logger.warn(`Category ${categoryId} not found, skipping question count update`);
+        this.logger.warn(
+          `Category ${categoryId} not found, skipping question count update`,
+        );
         return;
       }
 

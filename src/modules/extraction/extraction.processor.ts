@@ -17,6 +17,7 @@ export interface ExtractionJobData {
   startPage?: number;
   maxPages?: number;
   overwrite?: boolean;
+  isContinuation?: boolean;
 }
 
 @Processor('extraction')
@@ -34,10 +35,19 @@ export class ExtractionProcessor {
 
   @Process('extract')
   async handleExtraction(job: Job<ExtractionJobData>) {
-    const { extractionId, filename, model, startPage, maxPages, overwrite } =
-      job.data;
+    const {
+      extractionId,
+      filename,
+      model,
+      startPage,
+      maxPages,
+      overwrite,
+      isContinuation,
+    } = job.data;
 
-    this.logger.log(`Starting extraction job ${extractionId} for ${filename}`);
+    this.logger.log(
+      `${isContinuation ? 'Continuing' : 'Starting'} extraction job ${extractionId} for ${filename}`,
+    );
 
     try {
       // Set the current PDF in the PDF service
@@ -48,42 +58,71 @@ export class ExtractionProcessor {
         this.ollamaService.setModel(model);
       }
 
-      // Initialize extraction state
-      const initialState: ExtractionStateDto = {
-        status: ExtractionStatus.PROCESSING,
-        selectedPdf: filename,
-        progress: 0,
-        totalPages: 0,
-        processedPages: 0,
-        failedPages: [],
-        logs: [
-          `[${new Date().toISOString()}] Starting extraction for ${filename}`,
-        ],
-        startTime: new Date().toISOString(),
-        extractedQuestions: 0,
-        questionsPerPage: {},
-        verifiedQuestions: 0,
-        updatedQuestions: 0,
-        skippedQuestions: 0,
-        extractionId,
-        model,
-        startPage,
-        maxPages,
-        overwrite,
-      };
+      let currentState: ExtractionStateDto;
 
-      await this.settingsService.saveExtractionState(initialState);
+      if (isContinuation) {
+        // For continuation, get the existing state and verify it
+        const existingState = await this.settingsService.getExtractionState();
+        if (!existingState) {
+          throw new Error(
+            'No existing extraction state found for continuation',
+          );
+        }
 
-      // Get PDF information
-      const pdfInfo = await this.pdfService.getPdfInfo();
-      const updatedState = {
-        ...initialState,
-        totalPages: pdfInfo.totalPages,
-      };
-      updatedState.logs.push(
-        `[${new Date().toISOString()}] PDF loaded: ${pdfInfo.totalPages} pages`,
-      );
-      await this.settingsService.saveExtractionState(updatedState);
+        // Update the extraction ID but preserve all other progress
+        currentState = {
+          ...existingState,
+          extractionId,
+          status: ExtractionStatus.PROCESSING,
+        };
+
+        currentState.logs.push(
+          `[${new Date().toISOString()}] Continuing extraction from page ${startPage}`,
+        );
+      } else {
+        // Initialize new extraction state
+        currentState = {
+          status: ExtractionStatus.PROCESSING,
+          selectedPdf: filename,
+          progress: 0,
+          totalPages: 0,
+          processedPages: 0,
+          failedPages: [],
+          logs: [
+            `[${new Date().toISOString()}] Starting extraction for ${filename}`,
+          ],
+          startTime: new Date().toISOString(),
+          extractedQuestions: 0,
+          questionsPerPage: {},
+          verifiedQuestions: 0,
+          updatedQuestions: 0,
+          skippedQuestions: 0,
+          extractionId,
+          model,
+          startPage,
+          maxPages,
+          overwrite,
+        };
+      }
+
+      await this.settingsService.saveExtractionState(currentState);
+
+      // Get PDF information (only if not continuation or if totalPages is not set)
+      let pdfInfo: any;
+      if (!isContinuation || !currentState.totalPages) {
+        pdfInfo = await this.pdfService.getPdfInfo();
+        currentState = {
+          ...currentState,
+          totalPages: pdfInfo.totalPages,
+        };
+        currentState.logs.push(
+          `[${new Date().toISOString()}] PDF loaded: ${pdfInfo.totalPages} pages`,
+        );
+        await this.settingsService.saveExtractionState(currentState);
+      } else {
+        // For continuation, create a mock pdfInfo object with the totalPages from state
+        pdfInfo = { totalPages: currentState.totalPages };
+      }
 
       // Determine start and end pages
       const actualStartPage = startPage || 1;
@@ -93,10 +132,10 @@ export class ExtractionProcessor {
         pdfInfo.totalPages,
       );
 
-      updatedState.logs.push(
+      currentState.logs.push(
         `[${new Date().toISOString()}] Processing pages ${actualStartPage}-${endPage} of ${pdfInfo.totalPages}`,
       );
-      await this.settingsService.saveExtractionState(updatedState);
+      await this.settingsService.saveExtractionState(currentState);
 
       // Process pages sequentially
       for (
@@ -104,21 +143,21 @@ export class ExtractionProcessor {
         pageNumber <= endPage;
         pageNumber++
       ) {
-        await this.processPage(pageNumber, filename, updatedState, overwrite);
+        await this.processPage(pageNumber, filename, currentState, overwrite);
       }
 
       // Mark extraction as completed
       await this.updateExtractionState({
-        ...updatedState,
+        ...currentState,
         status: ExtractionStatus.COMPLETED,
         endTime: new Date().toISOString(),
         logs: [
-          ...updatedState.logs,
+          ...currentState.logs,
           `[${new Date().toISOString()}] Extraction completed successfully`,
-          `[${new Date().toISOString()}] Total questions extracted: ${updatedState.extractedQuestions}`,
-          `[${new Date().toISOString()}] Verified questions skipped: ${updatedState.verifiedQuestions}`,
-          `[${new Date().toISOString()}] Questions updated: ${updatedState.updatedQuestions}`,
-          `[${new Date().toISOString()}] Questions skipped: ${updatedState.skippedQuestions}`,
+          `[${new Date().toISOString()}] Total questions extracted: ${currentState.extractedQuestions}`,
+          `[${new Date().toISOString()}] Verified questions skipped: ${currentState.verifiedQuestions}`,
+          `[${new Date().toISOString()}] Questions updated: ${currentState.updatedQuestions}`,
+          `[${new Date().toISOString()}] Questions skipped: ${currentState.skippedQuestions}`,
         ],
       });
 
@@ -128,25 +167,35 @@ export class ExtractionProcessor {
 
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
-      await this.updateExtractionState({
+
+      // Get current state to preserve progress in case of failure
+      const failedState = await this.settingsService.getExtractionState();
+      const stateToUpdate = failedState || {
         status: ExtractionStatus.FAILED,
         selectedPdf: filename,
         progress: 0,
         totalPages: 0,
         processedPages: 0,
         failedPages: [],
-        logs: [
-          `[${new Date().toISOString()}] Extraction failed: ${errorMessage}`,
-        ],
+        logs: [],
         startTime: new Date().toISOString(),
-        endTime: new Date().toISOString(),
-        error: errorMessage,
         extractedQuestions: 0,
         questionsPerPage: {},
         verifiedQuestions: 0,
         updatedQuestions: 0,
         skippedQuestions: 0,
         extractionId,
+      };
+
+      await this.updateExtractionState({
+        ...stateToUpdate,
+        status: ExtractionStatus.FAILED,
+        endTime: new Date().toISOString(),
+        error: errorMessage,
+        logs: [
+          ...stateToUpdate.logs,
+          `[${new Date().toISOString()}] Extraction failed: ${errorMessage}`,
+        ],
       });
     }
   }
@@ -198,6 +247,7 @@ export class ExtractionProcessor {
         extractedQuestions,
         pageNumber,
         overwrite,
+        pdf,
       );
 
       // Log extraction results
@@ -237,6 +287,7 @@ export class ExtractionProcessor {
     extractedQuestions: ExtractedQuestion[],
     pageNumber: number,
     overwrite: boolean = false,
+    pdfFilename: string,
   ): Promise<ExtractedQuestion[]> {
     const processedQuestions: ExtractedQuestion[] = [];
 
@@ -258,6 +309,7 @@ export class ExtractionProcessor {
             await this.updateExistingQuestion(
               existingQuestion.id,
               extractedQuestion,
+              pdfFilename,
             );
             this.logger.log(
               `Page ${pageNumber}: Updated existing question (overwrite mode)`,
@@ -280,6 +332,7 @@ export class ExtractionProcessor {
               await this.updateExistingQuestion(
                 existingQuestion.id,
                 extractedQuestion,
+                pdfFilename,
               );
               this.logger.log(`Page ${pageNumber}: Updated existing question`);
             } else {
@@ -292,7 +345,7 @@ export class ExtractionProcessor {
         }
 
         // Create new question
-        await this.createNewQuestion(extractedQuestion);
+        await this.createNewQuestion(extractedQuestion, pdfFilename);
         processedQuestions.push(extractedQuestion);
         this.logger.log(`Page ${pageNumber}: Created new question`);
       } catch (error) {
@@ -429,6 +482,7 @@ export class ExtractionProcessor {
   private async updateExistingQuestion(
     questionId: string,
     extractedQuestion: any,
+    pdfFilename: string,
   ): Promise<void> {
     try {
       // Convert category names to IDs
@@ -459,6 +513,7 @@ export class ExtractionProcessor {
         aiMetadata: {
           confidence: extractedQuestion.confidence,
           extractedAt: new Date(),
+          sourceFile: pdfFilename,
         },
       });
 
@@ -474,7 +529,10 @@ export class ExtractionProcessor {
     }
   }
 
-  private async createNewQuestion(extractedQuestion: any): Promise<void> {
+  private async createNewQuestion(
+    extractedQuestion: any,
+    pdfFilename: string,
+  ): Promise<void> {
     try {
       // Convert category names to IDs
       const categoryIds = await this.convertCategoryNamesToIds(
@@ -504,6 +562,7 @@ export class ExtractionProcessor {
         aiMetadata: {
           confidence: extractedQuestion.confidence,
           extractedAt: new Date(),
+          sourceFile: pdfFilename,
         },
       });
 

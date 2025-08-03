@@ -46,7 +46,7 @@ export class ExtractionService {
   }> {
     // Check if there's already an active extraction
     const currentState = await this.settingsService.getExtractionState();
-    if (currentState && currentState.status === 'processing') {
+    if (currentState && currentState.status === ExtractionStatus.PROCESSING) {
       throw new BadRequestException('Extraction already in progress');
     }
 
@@ -111,7 +111,7 @@ export class ExtractionService {
   async stopExtraction(): Promise<{ message: string }> {
     const currentState = await this.settingsService.getExtractionState();
 
-    if (!currentState || currentState.status !== 'processing') {
+    if (!currentState || currentState.status !== ExtractionStatus.PROCESSING) {
       return { message: 'No extraction in progress' };
     }
 
@@ -141,6 +141,77 @@ export class ExtractionService {
     });
 
     return { message: 'Extraction stopped successfully' };
+  }
+
+  // Continue extraction from last processed page
+  async continueExtraction(): Promise<{
+    message: string;
+    extractionId: string;
+  }> {
+    const currentState = await this.settingsService.getExtractionState();
+
+    if (!currentState || currentState.status !== ExtractionStatus.STOPPED) {
+      throw new BadRequestException('No stopped extraction to continue');
+    }
+
+    // Generate new extraction ID for the continuation
+    const extractionId = `extraction_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Calculate the next page to start from
+    const nextStartPage = currentState.processedPages + 1;
+
+    // Check if there are more pages to process
+    if (nextStartPage > currentState.totalPages) {
+      throw new BadRequestException('All pages have been processed');
+    }
+
+    // Calculate remaining pages to process
+    const originalMaxPages = currentState.maxPages || currentState.totalPages;
+    const originalStartPage = currentState.startPage || 1;
+    const remainingPagesToProcess =
+      originalMaxPages -
+      (currentState.processedPages - (originalStartPage - 1));
+
+    // Update state to processing for continuation
+    const updatedState: ExtractionStateDto = {
+      ...currentState,
+      status: ExtractionStatus.PROCESSING,
+      extractionId,
+      endTime: undefined, // Clear endTime since we're resuming
+    };
+    updatedState.logs.push(
+      `[${new Date().toISOString()}] Continuing extraction from page ${nextStartPage}`,
+    );
+
+    await this.settingsService.saveExtractionState(updatedState);
+
+    // Add job to Bull queue with updated parameters
+    await this.extractionQueue.add('extract', {
+      extractionId,
+      filename: currentState.selectedPdf,
+      model: currentState.model,
+      startPage: nextStartPage,
+      maxPages: remainingPagesToProcess,
+      overwrite: currentState.overwrite,
+      isContinuation: true, // Flag to indicate this is a continuation
+    });
+
+    this.logger.log(
+      `Continued extraction job ${extractionId} for ${currentState.selectedPdf} from page ${nextStartPage}`,
+    );
+
+    // Emit continuation event
+    this.eventEmitter.emit('extraction.continued', {
+      pdf: currentState.selectedPdf,
+      extractionId,
+      fromPage: nextStartPage,
+      timestamp: new Date(),
+    });
+
+    return {
+      message: `Extraction continued for ${currentState.selectedPdf} from page ${nextStartPage}`,
+      extractionId,
+    };
   }
 
   // Get current extraction status

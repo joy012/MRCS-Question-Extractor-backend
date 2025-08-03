@@ -96,7 +96,7 @@ export class OllamaService {
     try {
       const prompt = this.buildExtractionPrompt(text, pageNumber, pdfName);
       const response = await this.generateResponse(prompt);
-      const questions = this.parseQuestionResponse(response);
+      const questions = await this.parseQuestionResponse(response, pdfName);
 
       // Filter and validate questions
       return questions.filter((question) => this.isQuestionValid(question));
@@ -195,6 +195,12 @@ INTAKE DETECTION - PRIORITY ORDER:
 - Common intake patterns to look for: "January", "Jan", "April", "May", "September", "Sept", etc.
 - Map patterns to valid intakes: January/Jan → "january", April/May → "april-may", September/Sept → "september"
 - Valid intakes are: january, april-may, september
+
+SPECIAL PDF NAMES - HARDCODED VALUES:
+- For PDF name containing "RECALL APRIL 2025 Dr Hedaiyat BD": Use intake="april-may" and year=2025
+- For PDF name containing "Recall January 2025": Use intake="january" and year=2025  
+- For PDF name containing "Sept 2024": Use intake="september" and year=2024
+- For PDF name containing "mrcs-question-bank": Extract intake and year from PDF content
 
 OUTPUT FORMAT: Return a JSON array with this exact structure:
 [
@@ -395,7 +401,10 @@ Provide only the JSON response.`;
     }
   }
 
-  private parseQuestionResponse(response: string): ExtractedQuestion[] {
+  private async parseQuestionResponse(
+    response: string,
+    pdfName?: string,
+  ): Promise<ExtractedQuestion[]> {
     try {
       // Clean the response to extract JSON
       const jsonMatch = response.match(/\[[\s\S]*\]/);
@@ -404,7 +413,15 @@ Provide only the JSON response.`;
         return [];
       }
 
-      const parsedResponse: unknown = JSON.parse(jsonMatch[0]);
+      let jsonString = jsonMatch[0];
+
+      // Clean up common JSON formatting issues
+      jsonString = this.cleanJsonString(jsonString);
+
+      // Log the cleaned JSON for debugging
+      this.logger.debug('Cleaned JSON string:', jsonString);
+
+      const parsedResponse: unknown = JSON.parse(jsonString);
 
       if (!Array.isArray(parsedResponse)) {
         this.logger.warn('Parsed response is not an array');
@@ -412,12 +429,134 @@ Provide only the JSON response.`;
       }
 
       // Validate and clean each question
-      return parsedResponse
-        .filter((q: unknown) => this.validateQuestion(q))
-        .map((q: unknown) => this.cleanQuestion(q));
+      const validQuestions = parsedResponse.filter((q: unknown) =>
+        this.validateQuestion(q),
+      );
+      const cleanedQuestions = await Promise.all(
+        validQuestions.map((q: unknown) => this.cleanQuestion(q, pdfName)),
+      );
+      return cleanedQuestions;
     } catch (error) {
       this.logger.error('Failed to parse question response:', error);
+      this.logger.debug('Raw response:', response);
+
+      // Try alternative parsing approach
+      try {
+        // Try to find JSON after any markdown code blocks
+        const codeBlockMatch = response.match(
+          /```(?:json)?\s*(\[[\s\S]*?\])\s*```/,
+        );
+        if (codeBlockMatch) {
+          const jsonString = this.cleanJsonString(codeBlockMatch[1]);
+          this.logger.debug('Trying alternative JSON parsing:', jsonString);
+          const parsedResponse = JSON.parse(jsonString);
+
+          if (Array.isArray(parsedResponse)) {
+            const validQuestions = parsedResponse.filter((q: unknown) =>
+              this.validateQuestion(q),
+            );
+            const cleanedQuestions = await Promise.all(
+              validQuestions.map((q: unknown) =>
+                this.cleanQuestion(q, pdfName),
+              ),
+            );
+            return cleanedQuestions;
+          }
+        }
+
+        // Try to find JSON array without code blocks
+        const arrayMatch = response.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          const jsonString = this.cleanJsonString(arrayMatch[0]);
+          this.logger.debug('Trying array-only JSON parsing:', jsonString);
+          const parsedResponse = JSON.parse(jsonString);
+
+          if (Array.isArray(parsedResponse)) {
+            const validQuestions = parsedResponse.filter((q: unknown) =>
+              this.validateQuestion(q),
+            );
+            const cleanedQuestions = await Promise.all(
+              validQuestions.map((q: unknown) =>
+                this.cleanQuestion(q, pdfName),
+              ),
+            );
+            return cleanedQuestions;
+          }
+        }
+      } catch (altError) {
+        this.logger.error('Alternative parsing also failed:', altError);
+      }
+
       return [];
+    }
+  }
+
+  private cleanJsonString(jsonString: string): string {
+    // First, let's try to parse as-is to see if it's already valid
+    try {
+      JSON.parse(jsonString);
+      return jsonString; // If it parses successfully, return as-is
+    } catch {
+      // Only clean if there's an actual parsing error
+    }
+
+    // Store original for comparison
+    const original = jsonString;
+
+    // Step 1: Fix trailing commas (most common issue)
+    jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+
+    // Step 2: Fix double commas
+    jsonString = jsonString.replace(/,\s*,/g, ',');
+
+    // Step 3: Fix specific malformed option patterns
+    // Pattern 1: Content with embedded option references like "Text - D. Something r B D E."
+    jsonString = jsonString.replace(
+      /"([A-E])":\s*"([^"]*?)\s*-\s*[A-E]\.\s*[^"]*?(?:\s+[A-E]\s+)*[^"]*"/g,
+      (match, option, content) => {
+        // Extract only the first part before any dash followed by option pattern
+        const cleanedContent = content.trim();
+        return `"${option}": "${cleanedContent}"`;
+      },
+    );
+
+    // Pattern 2: More general cleanup for content with option-like patterns
+    jsonString = jsonString.replace(
+      /"([A-E])":\s*"([^"]*?)(?:\s*[A-E]\s*\.\s*[^"]*)*"/g,
+      (match, option, content) => {
+        // Split on any pattern that looks like an option (A. B. C. etc.)
+        const cleanedContent = content.split(/\s*[A-E]\s*\./)[0].trim();
+        return `"${option}": "${cleanedContent}"`;
+      },
+    );
+
+    // Step 4: Don't add placeholder options here - we'll handle missing options after parsing
+    // This will be handled in the cleanQuestion method using AI generation
+
+    // Step 5: Try to validate the result
+    try {
+      JSON.parse(jsonString);
+      return jsonString;
+    } catch {
+      this.logger.warn('JSON cleaning failed, using more aggressive approach');
+
+      // If still invalid, try more aggressive cleaning
+      // Remove any content that looks like embedded options within option values
+      jsonString = original.replace(
+        /"([A-E])":\s*"([^"]*?)(?:\s*[A-E]\s*\.\s*[^"]*)*"/g,
+        (match, option, content) => {
+          const cleanedContent = content
+            .split(/\s*[A-E]\s*\./)[0] // Take only the first part before any option pattern
+            .replace(/\s*-\s*$/, '') // Remove trailing dash
+            .trim();
+          return `"${option}": "${cleanedContent}"`;
+        },
+      );
+
+      // Final trailing comma cleanup
+      jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+
+      return jsonString;
     }
   }
 
@@ -431,7 +570,10 @@ Provide only the JSON response.`;
         return { categories: [], confidence: 0 };
       }
 
-      const parsedResult: unknown = JSON.parse(jsonMatch[0]);
+      let jsonString = jsonMatch[0];
+      jsonString = this.cleanJsonString(jsonString);
+
+      const parsedResult: unknown = JSON.parse(jsonString);
 
       if (typeof parsedResult !== 'object' || parsedResult === null) {
         return { categories: [], confidence: 0 };
@@ -451,6 +593,7 @@ Provide only the JSON response.`;
       };
     } catch (error) {
       this.logger.error('Failed to parse categorization response:', error);
+      this.logger.debug('Raw categorization response:', response);
       return { categories: [], confidence: 0 };
     }
   }
@@ -489,31 +632,223 @@ Provide only the JSON response.`;
     );
   }
 
-  private cleanQuestion(question: unknown): ExtractedQuestion {
+  private async cleanQuestion(
+    question: unknown,
+    pdfName?: string,
+  ): Promise<ExtractedQuestion> {
     const q = question as Record<string, unknown>;
     const options = q.options as Record<string, unknown>;
 
+    // Override intake and year based on specific PDF names
+    let intake = q.intake as string;
+    let examYear = q.examYear as number;
+
+    if (pdfName) {
+      const lowerPdfName = pdfName.toLowerCase();
+      console.log({ lowerPdfName });
+      // Hardcode specific PDF name patterns
+      if (lowerPdfName.includes('recall april 2025')) {
+        intake = 'april-may';
+        examYear = 2025;
+      } else if (lowerPdfName.includes('recall january 2025')) {
+        intake = 'january';
+        examYear = 2025;
+      } else if (lowerPdfName.includes('sept 2024')) {
+        intake = 'september';
+        examYear = 2024;
+      } else if (lowerPdfName.includes('mrcs-question-bank')) {
+        // For mrcs-question-bank.pdf, keep the AI's detection
+        // No override needed
+      }
+    }
+    console.log({ intake, examYear });
+
+    // Check for missing options and generate them if needed
+    const questionText = String(q.question).trim();
+    const correctAnswer = q.correctAnswer as string;
+    const existingOptions = { ...options };
+
+    // Check which options are missing or invalid
+    const requiredOptions = ['A', 'B', 'C', 'D', 'E'];
+    const missingOptions = requiredOptions.filter((opt) => {
+      const optionValue = existingOptions[opt];
+      if (!optionValue || typeof optionValue !== 'string') {
+        return true;
+      }
+      const optionStr = optionValue.trim();
+      return (
+        optionStr.length === 0 ||
+        optionStr.includes('Missing option') ||
+        optionStr.includes('undefined') ||
+        optionStr === 'undefined'
+      );
+    });
+
+    if (missingOptions.length > 0) {
+      this.logger.log(
+        `Generating missing options: ${missingOptions.join(', ')} for question: ${questionText.substring(0, 100)}...`,
+      );
+      const generatedOptions = await this.generateMissingOptions(
+        questionText,
+        existingOptions,
+        correctAnswer,
+        missingOptions,
+      );
+
+      // Merge generated options with existing ones
+      for (const [key, value] of Object.entries(generatedOptions)) {
+        existingOptions[key] = value;
+      }
+    }
+
     return {
-      question: String(q.question).trim(),
+      question: questionText,
       options: {
-        A: String(options.A).trim(),
-        B: String(options.B).trim(),
-        C: String(options.C).trim(),
-        D: String(options.D).trim(),
-        E: String(options.E).trim(),
+        A:
+          existingOptions.A && typeof existingOptions.A === 'string'
+            ? existingOptions.A.trim()
+            : '',
+        B:
+          existingOptions.B && typeof existingOptions.B === 'string'
+            ? existingOptions.B.trim()
+            : '',
+        C:
+          existingOptions.C && typeof existingOptions.C === 'string'
+            ? existingOptions.C.trim()
+            : '',
+        D:
+          existingOptions.D && typeof existingOptions.D === 'string'
+            ? existingOptions.D.trim()
+            : '',
+        E:
+          existingOptions.E && typeof existingOptions.E === 'string'
+            ? existingOptions.E.trim()
+            : '',
       },
-      correctAnswer: q.correctAnswer as string,
+      correctAnswer: correctAnswer,
       categories: (q.categories as string[]).filter((cat) =>
         this.categories.includes(cat),
       ),
-      examYear: q.examYear as number,
-      intake: q.intake as string,
+      examYear,
+      intake,
       explanation:
         q.explanation && typeof q.explanation === 'string'
           ? q.explanation.trim()
           : '',
       confidence: this.calculateConfidence(q),
     };
+  }
+
+  private async generateMissingOptions(
+    questionText: string,
+    existingOptions: Record<string, unknown>,
+    correctAnswer: string,
+    missingOptions: string[],
+  ): Promise<Record<string, string>> {
+    try {
+      const prompt = this.buildMissingOptionsPrompt(
+        questionText,
+        existingOptions,
+        correctAnswer,
+        missingOptions,
+      );
+
+      const response = await this.generateResponse(prompt);
+      return this.parseMissingOptionsResponse(response, missingOptions);
+    } catch (error) {
+      this.logger.error('Failed to generate missing options:', error);
+      // Return fallback options
+      const fallbackOptions: Record<string, string> = {};
+      missingOptions.forEach((option) => {
+        fallbackOptions[option] = `Alternative option ${option}`;
+      });
+      return fallbackOptions;
+    }
+  }
+
+  private buildMissingOptionsPrompt(
+    questionText: string,
+    existingOptions: Record<string, unknown>,
+    correctAnswer: string,
+    missingOptions: string[],
+  ): string {
+    const existingOptionsText = Object.entries(existingOptions)
+      .filter(([key, value]) => {
+        return (
+          value &&
+          typeof value === 'string' &&
+          value.trim() &&
+          !missingOptions.includes(key)
+        );
+      })
+      .map(([key, value]) => `${key}: ${(value as string).trim()}`)
+      .join('\n');
+
+    return `You are a medical AI assistant. Generate appropriate WRONG answer options for this MRCS exam question.
+
+QUESTION: ${questionText}
+
+EXISTING OPTIONS:
+${existingOptionsText}
+
+CORRECT ANSWER: ${correctAnswer}
+
+TASK: Generate ${missingOptions.length} plausible but INCORRECT medical options for: ${missingOptions.join(', ')}
+
+REQUIREMENTS:
+1. All generated options must be WRONG answers
+2. Options should be medically plausible but incorrect for this specific question
+3. Match the style and complexity of existing options
+4. Be specific to the medical topic (anatomy, physiology, pathology, etc.)
+5. Each option should be 2-15 words long
+6. Avoid obviously wrong or nonsensical options
+
+Return ONLY a JSON object with the missing options:
+{
+${missingOptions.map((opt) => `  "${opt}": "Your wrong option here"`).join(',\n')}
+}
+
+Generate options that a medical student might consider but are definitively incorrect for this question.`;
+  }
+
+  private parseMissingOptionsResponse(
+    response: string,
+    missingOptions: string[],
+  ): Record<string, string> {
+    try {
+      // Extract JSON from response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+
+      const jsonString = jsonMatch[0];
+      const parsedResponse = JSON.parse(jsonString);
+
+      // Validate and return only the requested options
+      const result: Record<string, string> = {};
+      missingOptions.forEach((option) => {
+        if (
+          parsedResponse[option] &&
+          typeof parsedResponse[option] === 'string'
+        ) {
+          result[option] = parsedResponse[option].trim();
+        } else {
+          result[option] = `Alternative medical option ${option}`;
+        }
+      });
+
+      return result;
+    } catch (error) {
+      this.logger.error('Failed to parse missing options response:', error);
+
+      // Fallback: generate basic options
+      const fallbackOptions: Record<string, string> = {};
+      missingOptions.forEach((option) => {
+        fallbackOptions[option] = `Medical alternative ${option}`;
+      });
+      return fallbackOptions;
+    }
   }
 
   // Calculate confidence based on question quality and AI-provided confidence

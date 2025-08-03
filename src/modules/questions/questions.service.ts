@@ -67,7 +67,7 @@ export class QuestionsService {
       const createdQuestion = await this.prisma.question.create({
         data: {
           ...questionData,
-          status: QuestionStatus.PENDING,
+          status: questionData.status || QuestionStatus.PENDING,
           intakeId: intakeId,
           categoryIds: categoryIds,
         },

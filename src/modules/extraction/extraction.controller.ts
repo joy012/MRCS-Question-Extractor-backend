@@ -49,6 +49,16 @@ export class ExtractionController {
   }
 
   /**
+   * Continue extraction from last processed page
+   * @summary Continue extraction from last processed page
+   * @tag extraction
+   */
+  @TypedRoute.Post('continue')
+  async continueExtraction(): Promise<StartExtractionResponse> {
+    return await this.extractionService.continueExtraction();
+  }
+
+  /**
    * Get current extraction status
    * @summary Get current extraction status
    * @tag extraction

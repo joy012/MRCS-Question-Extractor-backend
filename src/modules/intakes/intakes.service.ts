@@ -244,7 +244,9 @@ export class IntakesService implements OnModuleInit {
       });
 
       if (!intake) {
-        this.logger.warn(`Intake ${intakeId} not found, skipping question count update`);
+        this.logger.warn(
+          `Intake ${intakeId} not found, skipping question count update`,
+        );
         return;
       }
 

@@ -224,6 +224,16 @@ export class CategoriesService implements OnModuleInit {
     increment: number = 1,
   ): Promise<void> {
     try {
+      // First check if the category exists
+      const category = await this.prisma.category.findUnique({
+        where: { id: categoryId },
+      });
+
+      if (!category) {
+        this.logger.warn(`Category ${categoryId} not found, skipping question count update`);
+        return;
+      }
+
       await this.prisma.category.update({
         where: { id: categoryId },
         data: {

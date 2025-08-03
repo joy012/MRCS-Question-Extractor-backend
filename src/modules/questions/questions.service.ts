@@ -5,6 +5,11 @@ import { PrismaService } from '../../common/services/prisma.service';
 import { CategoriesService } from '../categories/categories.service';
 import { IntakesService } from '../intakes/intakes.service';
 import { CreateQuestionDto, QuestionFilterDto, UpdateQuestionDto } from './dto';
+import {
+  CategoryStats,
+  IntakeStats,
+  QuestionWithRelations,
+} from './dto/return-types.dto';
 
 export interface QuestionFilters {
   categories?: string[];
@@ -73,7 +78,11 @@ export class QuestionsService {
 
       // Update question counts
       await Promise.all([
-        this.categoriesService.updateQuestionCount(createQuestionDto.intake, 1),
+        // Update question count for each category
+        ...createQuestionDto.categories.map((categoryId) =>
+          this.categoriesService.updateQuestionCount(categoryId, 1),
+        ),
+        // Update question count for intake
         this.intakesService.updateQuestionCount(createQuestionDto.intake, 1),
       ]);
 
@@ -86,7 +95,7 @@ export class QuestionsService {
 
   async findAll(
     filters?: QuestionFilterDto,
-  ): Promise<PaginatedResponseDto<Question>> {
+  ): Promise<PaginatedResponseDto<QuestionWithRelations>> {
     const {
       page = 1,
       limit = 20,
@@ -130,31 +139,86 @@ export class QuestionsService {
       where.status = status;
     }
 
+    // Note: MongoDB with Prisma custom types doesn't support direct querying of nested fields
+    // We'll handle confidence filtering in JavaScript after fetching the data
+    // if (minConfidence !== undefined) {
+    //   where.aiMetadata = {
+    //     path: ['confidence'],
+    //     gte: minConfidence,
+    //   };
+    // }
+
+    const questions = await this.prisma.question.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        intake: true,
+      },
+    });
+
+    // Filter by confidence if specified
+    let filteredQuestions = questions;
     if (minConfidence !== undefined) {
-      where.aiMetadata = {
-        path: ['confidence'],
-        gte: minConfidence,
-      };
+      filteredQuestions = questions.filter((question) => {
+        if (!question.aiMetadata || typeof question.aiMetadata !== 'object') {
+          return false;
+        }
+        const aiMetadata = question.aiMetadata as any;
+        const confidence = aiMetadata.confidence;
+        return (
+          confidence !== undefined &&
+          confidence !== null &&
+          confidence >= minConfidence
+        );
+      });
     }
 
-    const [questions, total] = await Promise.all([
-      this.prisma.question.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          intake: true,
-        },
+    // Fetch categories for each question
+    const questionsWithCategories = await Promise.all(
+      filteredQuestions.map(async (question) => {
+        const categories = await this.prisma.category.findMany({
+          where: {
+            id: { in: question.categoryIds },
+          },
+        });
+
+        return {
+          ...question,
+          categories,
+        };
       }),
-      this.prisma.question.count({ where }),
-    ]);
+    );
+
+    // Recalculate total count for pagination
+    let total = await this.prisma.question.count({ where });
+    if (minConfidence !== undefined) {
+      // Get all questions for accurate count
+      const allQuestions = await this.prisma.question.findMany({
+        where: { isDeleted: false },
+        select: { aiMetadata: true },
+      });
+
+      total = allQuestions.filter((question) => {
+        if (!question.aiMetadata || typeof question.aiMetadata !== 'object') {
+          return false;
+        }
+        const aiMetadata = question.aiMetadata as any;
+        const confidence = aiMetadata.confidence;
+        return (
+          confidence !== undefined &&
+          confidence !== null &&
+          confidence >= minConfidence
+        );
+      }).length;
+    }
 
     const totalPages = Math.ceil(total / limit);
 
     return {
       success: true,
-      data: questions,
+      data: questionsWithCategories,
       pagination: {
         page,
         limit,
@@ -166,13 +230,29 @@ export class QuestionsService {
     };
   }
 
-  async findOne(id: string): Promise<Question | null> {
-    return this.prisma.question.findUnique({
+  async findOne(id: string): Promise<QuestionWithRelations | null> {
+    const question = await this.prisma.question.findUnique({
       where: { id },
       include: {
         intake: true,
       },
     });
+
+    if (!question) {
+      return null;
+    }
+
+    // Fetch categories for the question
+    const categories = await this.prisma.category.findMany({
+      where: {
+        id: { in: question.categoryIds },
+      },
+    });
+
+    return {
+      ...question,
+      categories,
+    } as QuestionWithRelations;
   }
 
   async update(
@@ -211,6 +291,33 @@ export class QuestionsService {
       }
 
       const { intake, categories, ...updateData } = updateQuestionDto;
+
+      // Handle category count updates
+      if (categories && !existingQuestion.isDeleted) {
+        const oldCategoryIds = existingQuestion.categoryIds;
+        const newCategoryIds = categories;
+
+        // Categories to decrement (removed from question)
+        const categoriesToDecrement = oldCategoryIds.filter(
+          (id) => !newCategoryIds.includes(id),
+        );
+
+        // Categories to increment (added to question)
+        const categoriesToIncrement = newCategoryIds.filter(
+          (id) => !oldCategoryIds.includes(id),
+        );
+
+        // Update category counts
+        await Promise.all([
+          ...categoriesToDecrement.map((categoryId) =>
+            this.categoriesService.updateQuestionCount(categoryId, -1),
+          ),
+          ...categoriesToIncrement.map((categoryId) =>
+            this.categoriesService.updateQuestionCount(categoryId, 1),
+          ),
+        ]);
+      }
+
       return await this.prisma.question.update({
         where: { id },
         data: {
@@ -230,6 +337,23 @@ export class QuestionsService {
 
   async remove(id: string): Promise<boolean> {
     try {
+      const question = await this.prisma.question.findUnique({
+        where: { id },
+      });
+
+      if (!question) {
+        return false;
+      }
+
+      // Decrement question counts for categories if question is not already deleted
+      if (!question.isDeleted) {
+        await Promise.all(
+          question.categoryIds.map((categoryId) =>
+            this.categoriesService.updateQuestionCount(categoryId, -1),
+          ),
+        );
+      }
+
       await this.prisma.question.update({
         where: { id },
         data: {
@@ -265,7 +389,7 @@ export class QuestionsService {
     };
   }
 
-  async getCategories(): Promise<Array<{ category: string; count: number }>> {
+  async getCategories(): Promise<CategoryStats> {
     const categories = await this.prisma.category.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
@@ -285,6 +409,7 @@ export class QuestionsService {
       return {
         category: cat.name,
         count,
+        id: cat.id,
       };
     });
   }
@@ -315,7 +440,7 @@ export class QuestionsService {
       });
   }
 
-  async getIntakes(): Promise<Array<{ intake: string; count: number }>> {
+  async getIntakes(): Promise<IntakeStats> {
     const intakes = await this.prisma.intake.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
@@ -334,6 +459,7 @@ export class QuestionsService {
       return {
         intake: intake.name,
         count,
+        id: intake.id,
       };
     });
   }

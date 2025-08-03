@@ -2,6 +2,7 @@ import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { CategoriesService } from '../categories/categories.service';
+import { IntakesService } from '../intakes/intakes.service';
 import { QuestionsService } from '../questions/questions.service';
 import { ExtractionStateDto, ExtractionStatus } from '../settings/dto';
 import { SettingsService } from '../settings/settings.service';
@@ -26,6 +27,7 @@ export class ExtractionProcessor {
     private readonly pdfService: PdfService,
     private readonly questionsService: QuestionsService,
     private readonly categoriesService: CategoriesService,
+    private readonly intakesService: IntakesService,
     private readonly settingsService: SettingsService,
   ) {}
 
@@ -433,13 +435,18 @@ export class ExtractionProcessor {
         extractedQuestion.categories,
       );
 
+      // Convert intake name to ID
+      const intakeId = await this.convertIntakeNameToId(
+        extractedQuestion.intake,
+      );
+
       await this.questionsService.update(questionId, {
         question: extractedQuestion.question,
         options: extractedQuestion.options,
         correctAnswer: extractedQuestion.correctAnswer,
         categories: categoryIds,
         year: extractedQuestion.examYear,
-        intake: extractedQuestion.intake,
+        intake: intakeId,
         explanation: extractedQuestion.explanation,
         aiMetadata: {
           confidence: extractedQuestion.confidence,
@@ -459,13 +466,18 @@ export class ExtractionProcessor {
         extractedQuestion.categories,
       );
 
+      // Convert intake name to ID
+      const intakeId = await this.convertIntakeNameToId(
+        extractedQuestion.intake,
+      );
+
       await this.questionsService.create({
         question: extractedQuestion.question,
         options: extractedQuestion.options,
         correctAnswer: extractedQuestion.correctAnswer,
         categories: categoryIds,
         year: extractedQuestion.examYear,
-        intake: extractedQuestion.intake,
+        intake: intakeId,
         explanation: extractedQuestion.explanation,
         aiMetadata: {
           confidence: extractedQuestion.confidence,
@@ -492,7 +504,43 @@ export class ExtractionProcessor {
       }
     }
 
+    // If no categories were found, use a default category
+    if (categoryIds.length === 0) {
+      const activeCategories = await this.categoriesService.findAllActive();
+      if (activeCategories.length > 0) {
+        this.logger.warn(
+          `No valid categories found, using default category: ${activeCategories[0].name}`,
+        );
+        categoryIds.push(activeCategories[0].id);
+      } else {
+        throw new Error('No active categories found in database');
+      }
+    }
+
     return categoryIds;
+  }
+
+  private async convertIntakeNameToId(intakeName: string): Promise<string> {
+    // First try to find existing intake by name
+    const intake = await this.intakesService.findByName(intakeName);
+
+    if (intake) {
+      return intake.id;
+    }
+
+    // If intake doesn't exist, use the first active intake as fallback
+    const activeIntakes = await this.intakesService.findAllActive();
+    if (activeIntakes.length > 0) {
+      this.logger.warn(
+        `Intake "${intakeName}" not found, using fallback intake: ${activeIntakes[0].name}`,
+      );
+      return activeIntakes[0].id;
+    }
+
+    // If no active intakes exist, throw an error
+    throw new Error(
+      `No active intakes found in database. Cannot process question with intake: ${intakeName}`,
+    );
   }
 
   private updateProgress(pageNumber: number, state: any): void {

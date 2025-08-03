@@ -30,20 +30,6 @@ export interface PdfPageContent {
   confidence: number;
 }
 
-interface TextContentItem {
-  str: string;
-  dir: string;
-  width: number;
-  height: number;
-  transform: number[];
-  fontName: string;
-}
-
-interface TextContent {
-  items: TextContentItem[];
-  styles: Record<string, any>;
-}
-
 @Injectable()
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
@@ -212,44 +198,102 @@ export class PdfService {
   ): Promise<PdfPageContent> {
     const page = await doc.getPage(pageNumber);
 
-    // Extract text content
-    const textContent = await page.getTextContent();
-    const text = (textContent as TextContent).items
-      .map((item: TextContentItem) => item.str)
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
+    // Try multiple text extraction methods
+    let bestText = '';
+    let bestConfidence = 0;
     const images: Buffer[] = [];
-    const confidence = 0.7; // Default confidence for text extraction
 
-    // If text extraction yields poor results, try OCR
-    if (text.length < 100) {
-      try {
-        const {
-          text: ocrText,
-          images: extractedImages,
-          confidence: ocrConfidence,
-        } = await this.extractWithOCR(page, pageNumber);
+    // Method 1: Standard text content extraction
+    try {
+      const textContent = await page.getTextContent();
+      if (textContent && textContent.items && textContent.items.length > 0) {
+        const text = textContent.items
+          .map((item: any) => item.str)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
 
-        if (ocrText.length > text.length) {
-          return {
-            pageNumber,
-            text: ocrText,
-            images: extractedImages,
-            confidence: ocrConfidence,
-          };
+        if (text.length > bestText.length) {
+          bestText = text;
+          bestConfidence = 0.8;
         }
-      } catch (ocrError) {
-        this.logger.warn(`OCR failed for page ${pageNumber}:`, ocrError);
       }
+    } catch (error) {
+      this.logger.warn(
+        `Standard text extraction failed for page ${pageNumber}:`,
+        error,
+      );
+    }
+
+    // Method 2: Try with different text extraction parameters
+    if (bestText.length < 100) {
+      try {
+        const textContentAlt = await page.getTextContent();
+        if (
+          textContentAlt &&
+          textContentAlt.items &&
+          textContentAlt.items.length > 0
+        ) {
+          const text = textContentAlt.items
+            .map((item: any) => item.str)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          if (text.length > bestText.length) {
+            bestText = text;
+            bestConfidence = 0.7;
+          }
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Alternative text extraction failed for page ${pageNumber}:`,
+          error,
+        );
+      }
+    }
+
+    // Method 3: Try to extract text using page operations
+    if (bestText.length < 50) {
+      try {
+        const opList = await page.getOperatorList();
+        if (opList && opList.fnArray) {
+          let text = '';
+          for (let i = 0; i < opList.fnArray.length; i++) {
+            if (opList.fnArray[i] === 17) {
+              // PDFJS.OPS.showText
+              const args = opList.argsArray[i];
+              if (args && args.length > 0) {
+                text += args.join(' ');
+              }
+            }
+          }
+
+          if (text.trim().length > bestText.length) {
+            bestText = text.trim();
+            bestConfidence = 0.6;
+          }
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Operator list extraction failed for page ${pageNumber}:`,
+          error,
+        );
+      }
+    }
+
+    // If still no text found, log the issue
+    if (bestText.length === 0) {
+      this.logger.warn(
+        `No text content found for page ${pageNumber} - PDF may be image-based or corrupted`,
+      );
     }
 
     return {
       pageNumber,
-      text,
+      text: bestText,
       images,
-      confidence,
+      confidence: bestConfidence,
     };
   }
 
@@ -278,32 +322,6 @@ export class PdfService {
           images: [],
           confidence: 0.9, // High confidence for direct text extraction
         };
-      }
-
-      // Fallback: Try to extract text using PDF.js text layer
-      try {
-        const textLayer = await page.getTextContent();
-
-        if (textLayer && textLayer.items && textLayer.items.length > 0) {
-          const text = textLayer.items
-            .map((item: any) => item.str)
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-          if (text.length > 0) {
-            return {
-              text,
-              images: [],
-              confidence: 0.8,
-            };
-          }
-        }
-      } catch (textError) {
-        this.logger.warn(
-          `Text extraction failed for page ${pageNumber}:`,
-          textError,
-        );
       }
 
       // If no text found, return empty result

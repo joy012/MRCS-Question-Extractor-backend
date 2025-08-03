@@ -14,6 +14,7 @@ import {
   GetCategoryStatsResponse,
   ResetToDefaultResponse,
   SeedCategoriesResponse,
+  SyncQuestionCountsResponse,
   UpdateCategoryResponse,
 } from './dto';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -152,5 +153,16 @@ export class CategoriesController {
   async seedCategories(): Promise<SeedCategoriesResponse> {
     await this.categoriesService.seedCategories();
     return { message: 'Categories seeded successfully' };
+  }
+
+  /**
+   * Sync question counts for all categories
+   * @summary Sync question counts
+   * @tag categories
+   */
+  @TypedRoute.Post('sync-question-counts')
+  async syncQuestionCounts(): Promise<SyncQuestionCountsResponse> {
+    await this.categoriesService.syncQuestionCounts();
+    return { message: 'Question counts synced successfully' };
   }
 }

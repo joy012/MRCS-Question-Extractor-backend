@@ -1,6 +1,7 @@
 import { BullModule } from '@nestjs/bull';
 import { Module } from '@nestjs/common';
 import { CategoriesModule } from '../categories/categories.module';
+import { IntakesModule } from '../intakes/intakes.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { SettingsModule } from '../settings/settings.module';
 import { ExtractionController } from './extraction.controller';
@@ -15,6 +16,7 @@ import { PdfService } from './pdf.service';
       name: 'extraction',
     }),
     CategoriesModule,
+    IntakesModule,
     QuestionsModule,
     SettingsModule,
   ],

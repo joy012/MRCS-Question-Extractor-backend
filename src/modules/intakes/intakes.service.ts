@@ -238,6 +238,16 @@ export class IntakesService implements OnModuleInit {
     increment: number = 1,
   ): Promise<void> {
     try {
+      // First check if the intake exists
+      const intake = await this.prisma.intake.findUnique({
+        where: { id: intakeId },
+      });
+
+      if (!intake) {
+        this.logger.warn(`Intake ${intakeId} not found, skipping question count update`);
+        return;
+      }
+
       await this.prisma.intake.update({
         where: { id: intakeId },
         data: {

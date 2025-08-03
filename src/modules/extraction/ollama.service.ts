@@ -216,6 +216,16 @@ OUTPUT FORMAT: Return a JSON array with this exact structure:
   }
 ]
 
+CONFIDENCE SCORING GUIDELINES:
+- 0.9-0.95: Excellent quality, complete question with clear correct answer
+- 0.8-0.89: Very good quality, well-formed question with good options
+- 0.7-0.79: Good quality, complete question with minor issues
+- 0.6-0.69: Acceptable quality, some uncertainty in extraction
+- 0.5-0.59: Lower quality, incomplete or unclear elements
+- Below 0.5: Poor quality, should be rejected
+
+Always provide a confidence score between 0.5 and 0.95 based on question quality.
+
 TEXT TO ANALYZE:
 ${text}
 
@@ -251,7 +261,33 @@ Provide only the JSON response.`;
   }
 
   private extractYearFromPdfName(pdfName: string): number | null {
-    // Match 4-digit years from 2000-2030
+    const lowerPdfName = pdfName.toLowerCase();
+
+    // If PDF name contains "mrcs-question-bank", return null to extract from PDF content
+    if (lowerPdfName.includes('mrcs-question-bank')) {
+      return null;
+    }
+
+    // Hardcode specific patterns
+    // Pattern: "Recall January 2025" -> year: 2025
+    if (lowerPdfName.includes('recall') && lowerPdfName.includes('january')) {
+      return 2025;
+    }
+
+    // Pattern: "RECALL APRIL 2025 Dr Hedaiyat BD" -> year: 2025
+    if (
+      lowerPdfName.includes('recall') &&
+      (lowerPdfName.includes('april') || lowerPdfName.includes('may'))
+    ) {
+      return 2025;
+    }
+
+    // Pattern: "Sept 2024" -> year: 2024
+    if (lowerPdfName.includes('sept') || lowerPdfName.includes('september')) {
+      return 2024;
+    }
+
+    // For other patterns, try to extract year from filename
     const yearPatterns = [
       /\b(20[0-3]\d)\b/, // 2000-2039
       /\b(19[8-9]\d)\b/, // 1980-1999 (for older exams if any)
@@ -274,6 +310,31 @@ Provide only the JSON response.`;
   private extractIntakeFromPdfName(pdfName: string): string | null {
     const lowerPdfName = pdfName.toLowerCase();
 
+    // If PDF name contains "mrcs-question-bank", return null to extract from PDF content
+    if (lowerPdfName.includes('mrcs-question-bank')) {
+      return null;
+    }
+
+    // Hardcode specific patterns
+    // Pattern: "Recall January 2025" -> intake: "january"
+    if (lowerPdfName.includes('recall') && lowerPdfName.includes('january')) {
+      return 'january';
+    }
+
+    // Pattern: "RECALL APRIL 2025 Dr Hedaiyat BD" -> intake: "april-may"
+    if (
+      lowerPdfName.includes('recall') &&
+      (lowerPdfName.includes('april') || lowerPdfName.includes('may'))
+    ) {
+      return 'april-may';
+    }
+
+    // Pattern: "Sept 2024" -> intake: "september"
+    if (lowerPdfName.includes('sept') || lowerPdfName.includes('september')) {
+      return 'september';
+    }
+
+    // For other patterns, try to extract intake from filename
     // Check for January intake patterns
     if (lowerPdfName.includes('january') || lowerPdfName.includes('jan')) {
       return 'january';
@@ -290,7 +351,6 @@ Provide only the JSON response.`;
     }
 
     // Additional pattern matching for edge cases
-    // Match patterns like "recall april", "exam january", etc.
     const intakePatterns = [
       { pattern: /\b(january|jan)\b/i, intake: 'january' },
       { pattern: /\b(april|may)\b/i, intake: 'april-may' },
@@ -452,11 +512,82 @@ Provide only the JSON response.`;
         q.explanation && typeof q.explanation === 'string'
           ? q.explanation.trim()
           : '',
-      confidence:
-        typeof q.confidence === 'number'
-          ? Math.max(0, Math.min(1, q.confidence))
-          : 0.5,
+      confidence: this.calculateConfidence(q),
     };
+  }
+
+  // Calculate confidence based on question quality and AI-provided confidence
+  private calculateConfidence(question: Record<string, unknown>): number {
+    // Start with AI-provided confidence if available
+    let confidence =
+      typeof question.confidence === 'number'
+        ? Math.max(0, Math.min(1, question.confidence))
+        : 0.7; // Default to 70% if AI doesn't provide confidence
+
+    // Boost confidence based on question quality indicators
+    const questionText =
+      typeof question.question === 'string' ? question.question.trim() : '';
+    const options = question.options as Record<string, unknown>;
+
+    // Quality checks that boost confidence
+    let qualityScore = 0;
+    const maxQualityScore = 10;
+
+    // Question length (good length = higher confidence)
+    if (questionText.length >= 50 && questionText.length <= 500) {
+      qualityScore += 2;
+    } else if (questionText.length >= 20 && questionText.length <= 1000) {
+      qualityScore += 1;
+    }
+
+    // Check if all options are present and meaningful
+    const optionKeys = ['A', 'B', 'C', 'D', 'E'];
+    let validOptions = 0;
+    for (const key of optionKeys) {
+      const optionValue = options[key];
+      const optionText =
+        typeof optionValue === 'string' ? optionValue.trim() : '';
+      if (optionText.length >= 3 && optionText.length <= 200) {
+        validOptions++;
+      }
+    }
+    qualityScore += Math.min(3, validOptions); // Max 3 points for options
+
+    // Check if correct answer is valid
+    const correctAnswer = question.correctAnswer as string;
+    if (correctAnswer && ['A', 'B', 'C', 'D', 'E'].includes(correctAnswer)) {
+      qualityScore += 1;
+    }
+
+    // Check if categories are valid
+    const categories = question.categories as string[];
+    if (categories && categories.length > 0) {
+      qualityScore += 1;
+    }
+
+    // Check if year is reasonable
+    const year = question.examYear as number;
+    if (year && year >= 2000 && year <= 2030) {
+      qualityScore += 1;
+    }
+
+    // Check if intake is valid
+    const intake = question.intake as string;
+    if (intake && this.intakes.includes(intake)) {
+      qualityScore += 1;
+    }
+
+    // Check for explanation (bonus point)
+    const explanation = question.explanation as string;
+    if (explanation && explanation.trim().length > 10) {
+      qualityScore += 1;
+    }
+
+    // Calculate final confidence
+    const qualityMultiplier = qualityScore / maxQualityScore;
+    confidence = Math.min(0.95, confidence + qualityMultiplier * 0.25);
+
+    return Math.max(0.3, Math.min(0.95, confidence));
   }
 
   // Additional validation for question quality

@@ -18,3 +18,4 @@ export type GetCategoryStatsResponse = {
 };
 export type GetActiveCategoryNamesResponse = string[];
 export type SeedCategoriesResponse = { message: string };
+export type SyncQuestionCountsResponse = { message: string };

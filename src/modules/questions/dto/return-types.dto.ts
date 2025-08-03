@@ -1,9 +1,13 @@
-import { Question, QuestionStatus } from '@prisma/client';
+import { Category, Intake, Question, QuestionStatus } from '@prisma/client';
 import { PaginatedResponseDto } from '../../../common/dto';
 
-export type CategoryStats = Array<{ category: string; count: number }>;
+export type CategoryStats = Array<{
+  category: string;
+  count: number;
+  id: string;
+}>;
 export type YearStats = Array<{ year: number; count: number }>;
-export type IntakeStats = Array<{ intake: string; count: number }>;
+export type IntakeStats = Array<{ intake: string; count: number; id: string }>;
 
 export type QuestionStats = {
   total: number;
@@ -25,9 +29,15 @@ export type BulkUpdateStatusResponse = {
   errors: string[];
 };
 
+export type QuestionWithRelations = Question & {
+  categories: Category[];
+  intake: Intake;
+};
+
 export type CreateQuestionResponse = Question;
-export type FindAllQuestionsResponse = PaginatedResponseDto<Question>;
-export type FindOneQuestionResponse = Question | null;
+export type FindAllQuestionsResponse =
+  PaginatedResponseDto<QuestionWithRelations>;
+export type FindOneQuestionResponse = QuestionWithRelations | null;
 export type UpdateQuestionResponse = Question | null;
 export type RemoveQuestionResponse = boolean;
 export type UpdateStatusResponse = Question | null;

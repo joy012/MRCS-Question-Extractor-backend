@@ -409,86 +409,143 @@ Provide only the JSON response.`;
       // Clean the response to extract JSON
       const jsonMatch = response.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        this.logger.warn('No JSON array found in response');
+        this.logger.warn('No JSON array found in response', {
+          responseLength: response.length,
+          responsePreview: response.substring(0, 200),
+        });
         return [];
       }
 
       let jsonString = jsonMatch[0];
 
+      // Log original JSON for debugging
+      this.logger.debug('Original JSON match:', {
+        length: jsonString.length,
+        preview: jsonString.substring(0, 300),
+      });
+
       // Clean up common JSON formatting issues
       jsonString = this.cleanJsonString(jsonString);
 
       // Log the cleaned JSON for debugging
-      this.logger.debug('Cleaned JSON string:', jsonString);
+      this.logger.debug('Cleaned JSON string:', {
+        length: jsonString.length,
+        preview: jsonString.substring(0, 300),
+      });
 
       const parsedResponse: unknown = JSON.parse(jsonString);
 
       if (!Array.isArray(parsedResponse)) {
-        this.logger.warn('Parsed response is not an array');
+        this.logger.warn('Parsed response is not an array', {
+          responseType: typeof parsedResponse,
+          response: parsedResponse,
+        });
         return [];
       }
+
+      this.logger.log(
+        `Successfully parsed ${parsedResponse.length} questions from response`,
+      );
 
       // Validate and clean each question
       const validQuestions = parsedResponse.filter((q: unknown) =>
         this.validateQuestion(q),
       );
+
+      this.logger.log(
+        `${validQuestions.length} questions passed validation out of ${parsedResponse.length} total`,
+      );
+
       const cleanedQuestions = await Promise.all(
         validQuestions.map((q: unknown) => this.cleanQuestion(q, pdfName)),
       );
+
       return cleanedQuestions;
     } catch (error) {
-      this.logger.error('Failed to parse question response:', error);
-      this.logger.debug('Raw response:', response);
+      this.logger.error('Failed to parse question response:', {
+        error: error.message,
+        errorType: error.constructor.name,
+        responseLength: response.length,
+        responseStart: response.substring(0, 500),
+        responseEnd: response.substring(Math.max(0, response.length - 500)),
+      });
 
-      // Try alternative parsing approach
-      try {
-        // Try to find JSON after any markdown code blocks
-        const codeBlockMatch = response.match(
-          /```(?:json)?\s*(\[[\s\S]*?\])\s*```/,
-        );
-        if (codeBlockMatch) {
-          const jsonString = this.cleanJsonString(codeBlockMatch[1]);
-          this.logger.debug('Trying alternative JSON parsing:', jsonString);
-          const parsedResponse = JSON.parse(jsonString);
-
-          if (Array.isArray(parsedResponse)) {
-            const validQuestions = parsedResponse.filter((q: unknown) =>
-              this.validateQuestion(q),
-            );
-            const cleanedQuestions = await Promise.all(
-              validQuestions.map((q: unknown) =>
-                this.cleanQuestion(q, pdfName),
-              ),
-            );
-            return cleanedQuestions;
-          }
-        }
-
-        // Try to find JSON array without code blocks
-        const arrayMatch = response.match(/\[[\s\S]*\]/);
-        if (arrayMatch) {
-          const jsonString = this.cleanJsonString(arrayMatch[0]);
-          this.logger.debug('Trying array-only JSON parsing:', jsonString);
-          const parsedResponse = JSON.parse(jsonString);
-
-          if (Array.isArray(parsedResponse)) {
-            const validQuestions = parsedResponse.filter((q: unknown) =>
-              this.validateQuestion(q),
-            );
-            const cleanedQuestions = await Promise.all(
-              validQuestions.map((q: unknown) =>
-                this.cleanQuestion(q, pdfName),
-              ),
-            );
-            return cleanedQuestions;
-          }
-        }
-      } catch (altError) {
-        this.logger.error('Alternative parsing also failed:', altError);
-      }
-
-      return [];
+      // Try alternative parsing approaches
+      return this.tryAlternativeJsonParsing(response, pdfName);
     }
+  }
+
+  private async tryAlternativeJsonParsing(
+    response: string,
+    pdfName?: string,
+  ): Promise<ExtractedQuestion[]> {
+    const parsingAttempts = [
+      {
+        name: 'Code block extraction',
+        regex: /```(?:json)?\s*(\[[\s\S]*?\])\s*```/,
+      },
+      {
+        name: 'Multi-line array extraction',
+        regex: /\[[\s\S]*?\]/,
+      },
+      {
+        name: 'Single-line array extraction',
+        regex: /\[[^[\]]*\]/,
+      },
+    ];
+
+    for (const attempt of parsingAttempts) {
+      try {
+        this.logger.debug(`Trying ${attempt.name}`);
+
+        const match = response.match(attempt.regex);
+        if (match) {
+          const jsonString = this.cleanJsonString(match[1] || match[0]);
+          this.logger.debug(`${attempt.name} - cleaned JSON:`, {
+            length: jsonString.length,
+            preview: jsonString.substring(0, 200),
+          });
+
+          const parsedResponse = JSON.parse(jsonString);
+
+          if (Array.isArray(parsedResponse)) {
+            this.logger.log(
+              `${attempt.name} successful - found ${parsedResponse.length} items`,
+            );
+
+            const validQuestions = parsedResponse.filter((q: unknown) =>
+              this.validateQuestion(q),
+            );
+
+            this.logger.log(
+              `${validQuestions.length} questions passed validation from ${attempt.name}`,
+            );
+
+            const cleanedQuestions = await Promise.all(
+              validQuestions.map((q: unknown) =>
+                this.cleanQuestion(q, pdfName),
+              ),
+            );
+
+            return cleanedQuestions;
+          } else {
+            this.logger.warn(
+              `${attempt.name} - parsed response is not an array:`,
+              typeof parsedResponse,
+            );
+          }
+        } else {
+          this.logger.debug(`${attempt.name} - no match found`);
+        }
+      } catch (error) {
+        this.logger.warn(`${attempt.name} failed:`, error.message);
+      }
+    }
+
+    this.logger.error(
+      'All JSON parsing attempts failed, returning empty array',
+    );
+    return [];
   }
 
   private cleanJsonString(jsonString: string): string {
@@ -503,60 +560,148 @@ Provide only the JSON response.`;
     // Store original for comparison
     const original = jsonString;
 
-    // Step 1: Fix trailing commas (most common issue)
-    jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
-
-    // Step 2: Fix double commas
-    jsonString = jsonString.replace(/,\s*,/g, ',');
-
-    // Step 3: Fix specific malformed option patterns
-    // Pattern 1: Content with embedded option references like "Text - D. Something r B D E."
-    jsonString = jsonString.replace(
-      /"([A-E])":\s*"([^"]*?)\s*-\s*[A-E]\.\s*[^"]*?(?:\s+[A-E]\s+)*[^"]*"/g,
-      (match, option, content) => {
-        // Extract only the first part before any dash followed by option pattern
-        const cleanedContent = content.trim();
-        return `"${option}": "${cleanedContent}"`;
-      },
-    );
-
-    // Pattern 2: More general cleanup for content with option-like patterns
-    jsonString = jsonString.replace(
-      /"([A-E])":\s*"([^"]*?)(?:\s*[A-E]\s*\.\s*[^"]*)*"/g,
-      (match, option, content) => {
-        // Split on any pattern that looks like an option (A. B. C. etc.)
-        const cleanedContent = content.split(/\s*[A-E]\s*\./)[0].trim();
-        return `"${option}": "${cleanedContent}"`;
-      },
-    );
-
-    // Step 4: Don't add placeholder options here - we'll handle missing options after parsing
-    // This will be handled in the cleanQuestion method using AI generation
-
-    // Step 5: Try to validate the result
     try {
-      JSON.parse(jsonString);
-      return jsonString;
-    } catch {
-      this.logger.warn('JSON cleaning failed, using more aggressive approach');
+      // Step 1: Remove any text before the first '[' and after the last ']'
+      const arrayStart = jsonString.indexOf('[');
+      const arrayEnd = jsonString.lastIndexOf(']');
+      if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+        jsonString = jsonString.substring(arrayStart, arrayEnd + 1);
+      }
 
-      // If still invalid, try more aggressive cleaning
-      // Remove any content that looks like embedded options within option values
-      jsonString = original.replace(
-        /"([A-E])":\s*"([^"]*?)(?:\s*[A-E]\s*\.\s*[^"]*)*"/g,
-        (match, option, content) => {
-          const cleanedContent = content
-            .split(/\s*[A-E]\s*\./)[0] // Take only the first part before any option pattern
-            .replace(/\s*-\s*$/, '') // Remove trailing dash
-            .trim();
-          return `"${option}": "${cleanedContent}"`;
+      // Step 2: Fix common JSON issues
+      // Remove trailing commas before closing brackets/braces
+      jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+
+      // Fix double commas
+      jsonString = jsonString.replace(/,\s*,/g, ',');
+
+      // Fix missing commas between objects
+      jsonString = jsonString.replace(/}\s*{/g, '},{');
+
+      // Fix missing commas between array items
+      jsonString = jsonString.replace(/]\s*\[/g, '],[');
+
+      // Step 3: Fix unescaped quotes within string values
+      // This is more conservative - only fix obvious cases
+      jsonString = jsonString.replace(
+        /"([^"]*)"(\s*:\s*)"([^"]*?)"([^"]*?)"([^"]*?)"/g,
+        (match, key, colon, start, middle, end) => {
+          // If the middle part looks like it should be escaped
+          if (
+            middle.length < 50 &&
+            !middle.includes(':') &&
+            !middle.includes('{') &&
+            !middle.includes('}')
+          ) {
+            return `"${key}"${colon}"${start}\\"${middle}\\"${end}"`;
+          }
+          return match;
         },
       );
+
+      // Step 4: Fix malformed option patterns
+      jsonString = jsonString.replace(
+        /"([A-E])":\s*"([^"]*?)(?:\s*[A-E]\s*[.)]\s*[^"]*?)*"/g,
+        (match, option, content) => {
+          // Take only the first meaningful part before any option-like pattern
+          const cleanedContent = content
+            .split(/\s*[A-E]\s*[.)]/)[0] // Split on option patterns like "A." or "A)"
+            .replace(/\s*-\s*$/, '') // Remove trailing dash
+            .replace(/\s+/g, ' ') // Normalize whitespace
+            .trim();
+
+          if (cleanedContent.length > 0) {
+            return `"${option}": "${cleanedContent}"`;
+          }
+          return match;
+        },
+      );
+
+      // Step 5: Handle specific problematic patterns
+      // Fix cases where option values contain unescaped quotes
+      jsonString = jsonString.replace(
+        /"([A-E])":\s*"([^"]*)"([^":,}\]]*)"([^"]*?)"/g,
+        (match, option, start, middle, end) => {
+          // If middle doesn't look like JSON structure, escape it
+          if (
+            !middle.includes(':') &&
+            !middle.includes('{') &&
+            middle.length < 100
+          ) {
+            return `"${option}": "${start}${middle}${end}"`;
+          }
+          return match;
+        },
+      );
+
+      // Step 6: Final validation and cleanup
+      // Remove any remaining malformed trailing content after the last complete object
+      const lastCompleteObject = jsonString.lastIndexOf('}');
+      const lastBracket = jsonString.lastIndexOf(']');
+      if (
+        lastCompleteObject !== -1 &&
+        lastBracket !== -1 &&
+        lastCompleteObject < lastBracket
+      ) {
+        const beforeLastBracket = jsonString.substring(0, lastBracket);
+        if (
+          beforeLastBracket.endsWith(',') ||
+          beforeLastBracket.endsWith(' ') ||
+          beforeLastBracket.endsWith('\n')
+        ) {
+          jsonString = beforeLastBracket.replace(/[,\s\n]*$/, '') + ']';
+        }
+      }
 
       // Final trailing comma cleanup
       jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
 
+      // Test if it's valid now
+      JSON.parse(jsonString);
       return jsonString;
+    } catch (error) {
+      this.logger.warn(
+        'Advanced JSON cleaning failed, trying fallback approach',
+      );
+
+      try {
+        // Fallback: More aggressive cleaning
+        jsonString = original;
+
+        // Extract just the array content
+        const arrayMatch = jsonString.match(/\[[\s\S]*\]/);
+        if (arrayMatch) {
+          jsonString = arrayMatch[0];
+        }
+
+        // Remove all content after option values that might be causing issues
+        jsonString = jsonString.replace(
+          /"([A-E])":\s*"([^"]*?)(?:\s*[A-E]\s*[.)][^"]*?)*"/g,
+          (match, option, content) => {
+            // Very conservative: take only the first sentence or first reasonable part
+            const cleanedContent = content
+              .split('.')[0] // Take first sentence
+              .split(';')[0] // Take first clause
+              .replace(/\s*-\s*$/, '')
+              .trim();
+            return `"${option}": "${cleanedContent}"`;
+          },
+        );
+
+        // Remove trailing commas and validate
+        jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
+        JSON.parse(jsonString);
+        return jsonString;
+      } catch (fallbackError) {
+        this.logger.error('All JSON cleaning attempts failed', {
+          originalError: error.message,
+          fallbackError: fallbackError.message,
+          jsonPreview: jsonString.substring(0, 200),
+        });
+
+        // Return a minimal valid JSON array as last resort
+        return '[]';
+      }
     }
   }
 

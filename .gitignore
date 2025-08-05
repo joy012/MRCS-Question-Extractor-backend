@@ -61,3 +61,5 @@ data/
 
 # PDF files
 *.pdf
+
+env.example

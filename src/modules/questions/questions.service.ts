@@ -408,23 +408,26 @@ export class QuestionsService {
       select: { id: true, name: true },
     });
 
-    // Get question counts for each category
-    const categoryStats = await this.prisma.question.groupBy({
-      by: ['categoryIds'],
-      _count: true,
-      where: { isDeleted: false },
-    });
+    // Get question counts for each category by querying questions that contain each category ID
+    const categoryStats = await Promise.all(
+      categories.map(async (cat) => {
+        const count = await this.prisma.question.count({
+          where: {
+            categoryIds: {
+              has: cat.id,
+            },
+            isDeleted: false,
+          },
+        });
+        return {
+          category: cat.name,
+          count,
+          id: cat.id,
+        };
+      }),
+    );
 
-    return categories.map((cat) => {
-      const count =
-        categoryStats.find((stat) => stat.categoryIds.includes(cat.id))
-          ?._count || 0;
-      return {
-        category: cat.name,
-        count,
-        id: cat.id,
-      };
-    });
+    return categoryStats;
   }
 
   async getYears(): Promise<Array<{ year: number; count: number }>> {
@@ -545,19 +548,28 @@ export class QuestionsService {
   }
 
   private async getCategoryStats(): Promise<Record<string, number>> {
-    const stats = await this.prisma.question.groupBy({
-      by: ['categoryIds'],
-      _count: true,
-      where: { isDeleted: false },
+    // Get all active categories
+    const categories = await this.prisma.category.findMany({
+      where: { isActive: true },
+      select: { id: true },
     });
 
+    // Get question counts for each category
     const categoryStats: Record<string, number> = {};
-    for (const stat of stats) {
-      for (const categoryId of stat.categoryIds) {
-        categoryStats[categoryId] =
-          (categoryStats[categoryId] || 0) + stat._count;
-      }
-    }
+
+    await Promise.all(
+      categories.map(async (cat) => {
+        const count = await this.prisma.question.count({
+          where: {
+            categoryIds: {
+              has: cat.id,
+            },
+            isDeleted: false,
+          },
+        });
+        categoryStats[cat.id] = count;
+      }),
+    );
 
     return categoryStats;
   }

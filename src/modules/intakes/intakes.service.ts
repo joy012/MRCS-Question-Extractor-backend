@@ -103,10 +103,29 @@ export class IntakesService implements OnModuleInit {
   }
 
   async findAllActive(): Promise<Intake[]> {
-    return this.prisma.intake.findMany({
+    const intakes = await this.prisma.intake.findMany({
       where: { isActive: true },
       orderBy: [{ displayName: 'asc' }],
     });
+
+    // Get question counts for each intake on-demand
+    const intakesWithCounts = await Promise.all(
+      intakes.map(async (intake) => {
+        const questionCount = await this.prisma.question.count({
+          where: {
+            intakeId: intake.id,
+            isDeleted: false,
+          },
+        });
+
+        return {
+          ...intake,
+          questionCount,
+        };
+      }),
+    );
+
+    return intakesWithCounts;
   }
 
   async findById(id: string): Promise<Intake | null> {

@@ -103,10 +103,31 @@ export class CategoriesService implements OnModuleInit {
   }
 
   async findAllActive(): Promise<Category[]> {
-    return this.prisma.category.findMany({
+    const categories = await this.prisma.category.findMany({
       where: { isActive: true },
       orderBy: [{ displayName: 'asc' }],
     });
+
+    // Get question counts for each category on-demand
+    const categoriesWithCounts = await Promise.all(
+      categories.map(async (category) => {
+        const questionCount = await this.prisma.question.count({
+          where: {
+            categoryIds: {
+              has: category.id,
+            },
+            isDeleted: false,
+          },
+        });
+
+        return {
+          ...category,
+          questionCount,
+        };
+      }),
+    );
+
+    return categoriesWithCounts;
   }
 
   async findById(id: string): Promise<Category | null> {

@@ -401,6 +401,70 @@ Provide only the JSON response.`;
     }
   }
 
+  /**
+   * Generate a completion using a specific model (for explanations, etc)
+   */
+  public async generateCompletionWithModel(
+    prompt: string,
+    model: string,
+  ): Promise<string> {
+    try {
+      const requestData: OllamaGenerateRequest = {
+        model,
+        prompt,
+        stream: false,
+        options: {
+          temperature: 0.2,
+          top_p: 0.9,
+          num_predict: 1024,
+        },
+      };
+      const response: AxiosResponse<OllamaGenerateResponse> =
+        await this.axiosInstance.post('/api/generate', requestData);
+      if (!response.data?.response) {
+        throw new Error('Invalid response from Ollama API');
+      }
+      return response.data.response;
+    } catch (error) {
+      this.logger.error('Ollama API request failed:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Ollama generation failed: ${errorMessage}`);
+    }
+  }
+
+  /**
+   * Generate a detailed medical explanation with optimized parameters
+   */
+  public async generateMedicalExplanation(
+    prompt: string,
+    model: string,
+  ): Promise<string> {
+    try {
+      const requestData: OllamaGenerateRequest = {
+        model,
+        prompt,
+        stream: false,
+        options: {
+          temperature: 0.4, // Higher temperature for more creative explanations
+          top_p: 0.95, // Higher top_p for more diverse vocabulary
+          num_predict: 2048, // Longer responses for detailed explanations
+        },
+      };
+      const response: AxiosResponse<OllamaGenerateResponse> =
+        await this.axiosInstance.post('/api/generate', requestData);
+      if (!response.data?.response) {
+        throw new Error('Invalid response from Ollama API');
+      }
+      return response.data.response;
+    } catch (error) {
+      this.logger.error('Ollama medical explanation generation failed:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(`Medical explanation generation failed: ${errorMessage}`);
+    }
+  }
+
   private async parseQuestionResponse(
     response: string,
     pdfName?: string,

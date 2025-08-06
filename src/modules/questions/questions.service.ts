@@ -104,6 +104,7 @@ export class QuestionsService {
       year,
       intake,
       status,
+      explanation,
       minConfidence,
     } = filters || {};
 
@@ -137,6 +138,18 @@ export class QuestionsService {
 
     if (status) {
       where.status = status;
+    }
+
+    // Handle explanation filter
+    if (explanation && explanation !== 'all') {
+      if (explanation === 'with_explanation') {
+        where.AND = [
+          { explanation: { not: null } },
+          { explanation: { not: '' } },
+        ];
+      } else if (explanation === 'without_explanation') {
+        where.OR = [{ explanation: null }, { explanation: '' }];
+      }
     }
 
     // Note: MongoDB with Prisma custom types doesn't support direct querying of nested fields

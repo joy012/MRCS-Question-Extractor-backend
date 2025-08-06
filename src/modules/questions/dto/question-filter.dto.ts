@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsNumber,
   IsOptional,
+  IsString,
   Max,
   Min,
 } from 'class-validator';
@@ -19,6 +20,14 @@ export class QuestionFilterDto extends SearchDto {
   @IsOptional()
   @IsEnum(QuestionStatus)
   status?: QuestionStatus;
+
+  @ApiPropertyOptional({
+    description: 'Filter by explanation status',
+    enum: ['all', 'with_explanation', 'without_explanation'],
+  })
+  @IsOptional()
+  @IsString()
+  explanation?: 'all' | 'with_explanation' | 'without_explanation';
 
   @ApiPropertyOptional({
     description: 'Filter by intake ID',

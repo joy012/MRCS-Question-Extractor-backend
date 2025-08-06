@@ -27,6 +27,6 @@ import { PdfService } from './pdf.service';
     OllamaService,
     PdfService,
   ],
-  exports: [ExtractionService],
+  exports: [ExtractionService, OllamaService],
 })
 export class ExtractionModule {}

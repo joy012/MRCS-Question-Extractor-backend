@@ -89,22 +89,46 @@ type QuestionOptions {
 }
 
 type AiMetadata {
-  confidence     Float?    @default(0)
-  extractedBy    String?   @default("AI")
-  sourceFile     String?
-  extractedAt    DateTime? @default(now())
-  aiModel        String?
-  processingTime Int?
-  rawExtraction  Json?
+  confidence           Float?    @default(0)
+  extractedBy          String?   @default("AI")
+  sourceFile           String?
+  extractedAt          DateTime? @default(now())
+  aiModel              String?
+  processingTime       Int?
+  rawExtraction        Json?
+  explanationAddedByAi Boolean?  @default(false)
+  explanationAddedAt   DateTime?
+  explanationModel     String?
 }
 
 model Settings {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  key           String   @unique
-  value         Json
-  description   String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("settings")
+}
+
+model AiExplanationSettings {
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  isActive              Boolean   @default(false)
+  model                 String    @default("meditron")
+  totalQuestions        Int       @default(0)
+  processedQuestions    Int       @default(0)
+  skippedQuestions      Int       @default(0)
+  failedQuestions       Int       @default(0)
+  processedQuestionIds  String[]  @default([]) // Store IDs of questions that have been processed
+  lastProcessedQuestion String?
+  lastProcessedAt       DateTime?
+  startedAt             DateTime?
+  stoppedAt             DateTime?
+  status                String    @default("idle") // idle, processing, completed, stopped, failed
+  error                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("ai_explanation_settings")
 }

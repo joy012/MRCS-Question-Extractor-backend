@@ -6,6 +6,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaService } from './common/services/prisma.service';
 import { AiExplanationModule } from './modules/ai-explanation/ai-explanation.module';
+import { AiRephrasingModule } from './modules/ai-rephrasing/ai-rephrasing.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ExtractionModule } from './modules/extraction/extraction.module';
 import { IntakesModule } from './modules/intakes/intakes.module';
@@ -33,6 +34,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 
     // Feature modules
     AiExplanationModule,
+    AiRephrasingModule,
     CategoriesModule,
     IntakesModule,
     QuestionsModule,

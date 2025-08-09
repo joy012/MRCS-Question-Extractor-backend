@@ -30,6 +30,14 @@ export class QuestionFilterDto extends SearchDto {
   explanation?: 'all' | 'with_explanation' | 'without_explanation';
 
   @ApiPropertyOptional({
+    description: 'Filter by rephrasing status',
+    enum: ['all', 'with_rephrasing', 'without_rephrasing'],
+  })
+  @IsOptional()
+  @IsString()
+  rephrasing?: 'all' | 'with_rephrasing' | 'without_rephrasing';
+
+  @ApiPropertyOptional({
     description: 'Filter by intake ID',
   })
   @IsOptional()

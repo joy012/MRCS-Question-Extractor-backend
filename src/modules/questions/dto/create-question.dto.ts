@@ -34,6 +34,16 @@ export class CreateQuestionDto {
   )
   question: string;
 
+  @ApiPropertyOptional({
+    description: 'AI rephrased question title',
+    maxLength: QUESTION_VALIDATION.MAX_QUESTION_LENGTH,
+    example: 'What is the most common cause of acute appendicitis in adults?',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(0, QUESTION_VALIDATION.MAX_QUESTION_LENGTH)
+  aiRephrasedTitle?: string;
+
   @ApiProperty({
     description: 'Question options A, B, C, D, E',
     type: QuestionOptionsDto,

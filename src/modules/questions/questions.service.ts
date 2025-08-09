@@ -106,6 +106,7 @@ export class QuestionsService {
       status,
       explanation,
       minConfidence,
+      rephrasing,
     } = filters || {};
 
     const skip = (page - 1) * limit;
@@ -149,6 +150,17 @@ export class QuestionsService {
         ];
       } else if (explanation === 'without_explanation') {
         where.OR = [{ explanation: null }, { explanation: '' }];
+      }
+    }
+
+    if (rephrasing && rephrasing !== 'all') {
+      if (rephrasing === 'with_rephrasing') {
+        where.AND = [
+          { aiRephrasedTitle: { not: null } },
+          { aiRephrasedTitle: { not: '' } },
+        ];
+      } else if (rephrasing === 'without_rephrasing') {
+        where.OR = [{ aiRephrasedTitle: null }, { aiRephrasedTitle: '' }];
       }
     }
 

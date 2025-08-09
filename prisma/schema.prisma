@@ -57,20 +57,21 @@ model Intake {
 }
 
 model Question {
-  id            String          @id @default(auto()) @map("_id") @db.ObjectId
-  question      String
-  options       QuestionOptions
-  correctAnswer String
-  description   String?
-  year          Int
-  explanation   String?
-  status        QuestionStatus  @default(PENDING)
-  aiMetadata    AiMetadata?
-  isDeleted     Boolean         @default(false)
-  deletedAt     DateTime?
-  deletedBy     String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  question         String
+  aiRephrasedTitle String? // New field for AI rephrased question title
+  options          QuestionOptions
+  correctAnswer    String
+  description      String?
+  year             Int
+  explanation      String?
+  status           QuestionStatus  @default(PENDING)
+  aiMetadata       AiMetadata?
+  isDeleted        Boolean         @default(false)
+  deletedAt        DateTime?
+  deletedBy        String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
   // Relations
   intakeId    String   @db.ObjectId
@@ -131,4 +132,25 @@ model AiExplanationSettings {
   updatedAt             DateTime  @updatedAt
 
   @@map("ai_explanation_settings")
+}
+
+model AiRephrasingSettings {
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  isActive              Boolean   @default(false)
+  model                 String    @default("llama3.1")
+  totalQuestions        Int       @default(0)
+  processedQuestions    Int       @default(0)
+  skippedQuestions      Int       @default(0)
+  failedQuestions       Int       @default(0)
+  processedQuestionIds  String[]  @default([]) // Store IDs of questions that have been processed
+  lastProcessedQuestion String?
+  lastProcessedAt       DateTime?
+  startedAt             DateTime?
+  stoppedAt             DateTime?
+  status                String    @default("idle") // idle, processing, completed, stopped, failed
+  error                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("ai_rephrasing_settings")
 }
